@@ -3,24 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Three.js VTT Básico</title>
+    <title>Three.js VTT Editor</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div id="ui-container">
-        <label for="fileInput">Importar Modelo 3D (GLB):</label>
-        <input type="file" id="fileInput" accept=".glb,.gltf">
         
-        <label for="imageInput">Importar Token 2D (Imagem):</label>
-        <input type="file" id="imageInput" accept="image/png, image/jpeg">
-        
+        <div id="import-controls">
+            <label for="fileInput">Importar Modelo 3D (GLB):</label>
+            <input type="file" id="fileInput" accept=".glb,.gltf">
+            
+            <label for="imageInput">Importar Token 2D (Imagem):</label>
+            <input type="file" id="imageInput" accept="image/png, image/jpeg">
+        </div>
+
+        <div id="light-controls">
+            <p>Adicionar Luzes:</p>
+            <button id="btn-add-pointlight">Luz de Ponto (P)</button>
+            <button id="btn-add-spotlight">Luz de Destaque (L)</button>
+        </div>
+
         <div id="gizmo-controls">
             <p>Controles (Gizmo):</p>
             <button id="btn-translate">Translate (W)</button>
             <button id="btn-rotate">Rotate (E)</button>
             <button id="btn-scale">Scale (R)</button>
         </div>
+
+    </div>
+
+    <div id="light-editor-panel" class="hidden">
+        <h4>Editar Luz Selecionada</h4>
+        <label for="light-color-picker">Cor da Luz:</label>
+        <input type="color" id="light-color-picker" value="#ffffff">
     </div>
 
     <canvas id="webgl-canvas"></canvas>
