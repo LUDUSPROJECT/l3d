@@ -5,9 +5,12 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js';
 
 class WebApp3D {
     constructor() {
-        // Elementos do DOM
+        // --- Elementos do DOM ---
         this.canvas = document.getElementById('webgl-canvas');
-        
+        // NOVO: UI de Edição de Luz
+        this.lightEditorPanel = document.getElementById('light-editor-panel');
+        this.lightColorPicker = document.getElementById('light-color-picker');
+
         // --- Setup Básico ---
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x333333);
@@ -22,44 +25,29 @@ class WebApp3D {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);
         
-        // --- SOMBRAS (Passo 1: Habilitar no Renderer) ---
+        // Configuração de Sombras
         this.renderer.shadowMap.enabled = true;
-        // Algoritmo para suavizar as bordas das sombras
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
 
         // --- Luzes ---
-        // Luz ambiente mais fraca para sombras mais pronunciadas
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
         this.scene.add(ambientLight);
 
-        // Luz direcional (sol) mais forte
+        // Luz Direcional (Sol)
         const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
-        directionalLight.position.set(5, 10, 7.5); // Posição mais alta
-        
-        // --- SOMBRAS (Passo 2: Configurar a Luz) ---
+        directionalLight.position.set(5, 10, 7.5); 
         directionalLight.castShadow = true; 
-        
-        // Ajusta a resolução do mapa de sombra (padrão é 512)
         directionalLight.shadow.mapSize.width = 2048; 
         directionalLight.shadow.mapSize.height = 2048;
-
-        // Ajusta a "câmera" da sombra (frustum) para cobrir a área do grid
         directionalLight.shadow.camera.left = -10;
         directionalLight.shadow.camera.right = 10;
         directionalLight.shadow.camera.top = 10;
         directionalLight.shadow.camera.bottom = -10;
-        
-        // **O PONTO CRÍTICO para evitar "hashuras" (shadow acne)**
-        // Um pequeno bias negativo "empurra" a sombra do objeto.
         directionalLight.shadow.bias = -0.0005; 
-        directionalLight.shadow.normalBias = 0.01; // Ajuste baseado na normal (evita acne em superfícies curvas)
-
+        directionalLight.shadow.normalBias = 0.01;
         this.scene.add(directionalLight);
+        // Não adicionamos a luz direcional ao array de 'luzes selecionáveis'
         
-        // Helper para visualizar a câmera da sombra (descomente para depurar)
-        // const shadowCamHelper = new THREE.CameraHelper(directionalLight.shadow.camera);
-        // this.scene.add(shadowCamHelper);
-
         // --- Controles de Câmera (Navegação) ---
         this.orbitControls = new OrbitControls(this.camera, this.renderer.domElement);
         this.orbitControls.enableDamping = true;
@@ -75,24 +63,26 @@ class WebApp3D {
         // --- Helpers ---
         this.scene.add(new THREE.GridHelper(10, 10));
         
-        // --- SOMBRAS (Passo 3: Adicionar o Chão) ---
-        // O GridHelper não recebe sombras, então adicionamos um plano.
+        // Chão para Sombras
         const groundGeometry = new THREE.PlaneGeometry(10, 10);
-        // Usamos ShadowMaterial para um chão "invisível" que apenas recebe sombras
         const groundMaterial = new THREE.ShadowMaterial({ opacity: 0.5 }); 
-        
         const groundPlane = new THREE.Mesh(groundGeometry, groundMaterial);
-        groundPlane.rotation.x = -Math.PI / 2; // Deita o plano
-        groundPlane.position.y = -0.01; // Um pouco abaixo do grid
-        groundPlane.receiveShadow = true; // **Obrigatório**
+        groundPlane.rotation.x = -Math.PI / 2; 
+        groundPlane.position.y = -0.01; 
+        groundPlane.receiveShadow = true; 
         this.scene.add(groundPlane);
         
         // --- Gerenciamento de Objetos ---
-        this.objects = []; 
+        this.objects = []; // Meshes (Cubos, Modelos, Tokens)
+        this.billboardTokens = [];
+        
+        // NOVO: Arrays para luzes dinâmicas e seus helpers
+        this.lights = [];
+        this.lightHelpers = [];
+        
         this.raycaster = new THREE.Raycaster();
         this.pointer = new THREE.Vector2();
         
-        this.billboardTokens = [];
         this.tempVec3 = new THREE.Vector3(); 
         this.cameraTargetVec = new THREE.Vector3();
 
@@ -107,6 +97,13 @@ class WebApp3D {
         this.onResize = this.onResize.bind(this);
         this.animate = this.animate.bind(this);
         this.onPointerDown = this.onPointerDown.bind(this);
+        
+        // NOVO: Binds para novas funções
+        this.addPointLight = this.addPointLight.bind(this);
+        this.addSpotLight = this.addSpotLight.bind(this);
+        this.onGizmoObjectChange = this.onGizmoObjectChange.bind(this);
+        this.updateSelectedLightColor = this.updateSelectedLightColor.bind(this);
+
         this.setupEventListeners();
 
         // Iniciar loop
@@ -118,11 +115,8 @@ class WebApp3D {
         const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
         const cube = new THREE.Mesh(geometry, material);
         cube.position.y = 0.5;
-        
-        // ATUALIZADO (SOMBRAS)
         cube.castShadow = true;
-        cube.receiveShadow = true; // O cubo pode receber sombra de outros objetos
-
+        cube.receiveShadow = true; 
         this.scene.add(cube);
         
         this.objects.push(cube);
@@ -133,41 +127,111 @@ class WebApp3D {
     setupEventListeners() {
         window.addEventListener('resize', this.onResize);
         
-        // Eventos do Gizmo
+        // --- Eventos do Gizmo ---
         document.getElementById('btn-translate').addEventListener('click', () => this.transformControls.setMode('translate'));
         document.getElementById('btn-rotate').addEventListener('click', () => this.transformControls.setMode('rotate'));
         document.getElementById('btn-scale').addEventListener('click', () => this.transformControls.setMode('scale'));
 
-        // Atalhos de Teclado (W, E, R)
+        // --- Atalhos de Teclado (W, E, R, P, L) ---
         window.addEventListener('keydown', (event) => {
+            // Não acionar atalhos se estiver digitando em um input (como o de cor)
+            if (event.target.tagName.toLowerCase() === 'input') return;
+
             switch (event.key.toLowerCase()) {
-                case 'w':
-                    this.transformControls.setMode('translate');
-                    break;
-                case 'e':
-                    this.transformControls.setMode('rotate');
-                    break;
-                case 'r':
-                    this.transformControls.setMode('scale');
-                    break;
+                case 'w': this.transformControls.setMode('translate'); break;
+                case 'e': this.transformControls.setMode('rotate'); break;
+                case 'r': this.transformControls.setMode('scale'); break;
+                case 'p': this.addPointLight(); break; // NOVO: Atalho P
+                case 'l': this.addSpotLight(); break; // NOVO: Atalho L
             }
         });
 
-        // Importador de Modelo 3D (GLB)
-        document.getElementById('fileInput').addEventListener('change', (event) => {
-            this.handleGLBImport(event);
-        });
-
-        // Importador de Token 2D (Imagem)
-        document.getElementById('imageInput').addEventListener('change', (event) => {
-            this.handleImageImport(event);
-        });
+        // --- Importadores ---
+        document.getElementById('fileInput').addEventListener('change', (event) => this.handleGLBImport(event));
+        document.getElementById('imageInput').addEventListener('change', (event) => this.handleImageImport(event));
         
-        // Seleção de Objeto (Clique)
+        // --- Seleção de Objeto (Clique) ---
         this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown);
+
+        // --- NOVO: Listeners de Luz ---
+        document.getElementById('btn-add-pointlight').addEventListener('click', this.addPointLight);
+        document.getElementById('btn-add-spotlight').addEventListener('click', this.addSpotLight);
+
+        // --- NOVO: Listener de mudança no seletor de cor ---
+        this.lightColorPicker.addEventListener('input', this.updateSelectedLightColor);
+
+        // --- NOVO: Listener de mudança de objeto no Gizmo ---
+        // Este é o ponto central para exibir/ocultar a UI de edição
+        this.transformControls.addEventListener('objectChange', this.onGizGobjectChange);
+    }
+
+    // --- NOVO: Adiciona PointLight ---
+    addPointLight() {
+        const light = new THREE.PointLight(0xffffff, 1, 10); // Cor, Intensidade, Distância
+        light.position.set(0, 2, 0); // Posição inicial
+        light.castShadow = true;
+        light.shadow.bias = -0.001; // Bias para point lights
+        light.shadow.mapSize.width = 1024;
+        light.shadow.mapSize.height = 1024;
+        
+        const helper = new THREE.PointLightHelper(light, 0.5); // Raio do helper
+        
+        this.scene.add(light);
+        this.scene.add(helper);
+        this.lights.push(light);
+        this.lightHelpers.push(helper);
+        
+        this.transformControls.attach(light); // Seleciona a nova luz
+    }
+
+    // --- NOVO: Adiciona SpotLight ---
+    addSpotLight() {
+        const light = new THREE.SpotLight(0xffffff, 1.5, 20, Math.PI / 6, 0.2); // Cor, Int, Dist, Ângulo, Penumbra
+        light.position.set(0, 3, 0);
+        light.target.position.set(0, 0, 0); // O alvo padrão é (0,0,0)
+        
+        light.castShadow = true;
+        light.shadow.bias = -0.001;
+        light.shadow.mapSize.width = 1024;
+        light.shadow.mapSize.height = 1024;
+
+        // O helper do SpotLight precisa da luz E seu alvo
+        const helper = new THREE.SpotLightHelper(light);
+        
+        this.scene.add(light);
+        this.scene.add(light.target); // Importante: adicionar o alvo à cena
+        this.scene.add(helper);
+        this.lights.push(light);
+        this.lightHelpers.push(helper);
+
+        this.transformControls.attach(light); // Seleciona a nova luz
+    }
+
+    // --- NOVO: Atualiza cor da luz selecionada ---
+    updateSelectedLightColor() {
+        const selectedObject = this.transformControls.object;
+        if (selectedObject && (selectedObject.isPointLight || selectedObject.isSpotLight)) {
+            selectedObject.color.set(this.lightColorPicker.value);
+        }
+    }
+
+    // --- NOVO: Controla a visibilidade do painel de edição ---
+    onGizmoObjectChange() {
+        const selectedObject = this.transformControls.object;
+        
+        if (selectedObject && (selectedObject.isPointLight || selectedObject.isSpotLight)) {
+            // Objeto selecionado é uma luz
+            this.lightEditorPanel.classList.remove('hidden');
+            // Sincroniza o seletor com a cor da luz
+            this.lightColorPicker.value = `#${selectedObject.color.getHexString()}`;
+        } else {
+            // Objeto não é uma luz (ou nada selecionado)
+            this.lightEditorPanel.classList.add('hidden');
+        }
     }
 
     handleGLBImport(event) {
+        // ... (código inalterado)
         const file = event.target.files[0];
         if (!file) return;
 
@@ -177,7 +241,6 @@ class WebApp3D {
             (gltf) => {
                 const model = gltf.scene;
                 
-                // ATUALIZADO (SOMBRAS): Habilita sombras para todo o modelo
                 model.traverse((node) => {
                     if (node.isMesh) {
                         node.castShadow = true;
@@ -204,6 +267,7 @@ class WebApp3D {
     }
 
     handleImageImport(event) {
+        // ... (código inalterado)
         const file = event.target.files[0];
         if (!file) return;
 
@@ -224,11 +288,7 @@ class WebApp3D {
 
             const token = new THREE.Mesh(geometry, material);
             token.position.y = height / 2;
-            
-            // ATUALIZADO (SOMBRAS)
             token.castShadow = true;
-            // É melhor não receber sombra (receiveShadow = false) em um plano 2D,
-            // pois pode parecer estranho. Apenas projetar sombra já "ancora" ele.
 
             this.scene.add(token);
             this.objects.push(token); 
@@ -246,6 +306,7 @@ class WebApp3D {
         });
     }
 
+    // --- ATUALIZADO: onPointerDown agora verifica Meshes E Helpers ---
     onPointerDown(event) {
         if (this.transformControls.dragging) return;
         
@@ -254,10 +315,22 @@ class WebApp3D {
 
         this.raycaster.setFromCamera(this.pointer, this.camera);
         
-        const intersects = this.raycaster.intersectObjects(this.objects, true);
+        // --- Raycast em duas etapas ---
+        // 1. Verificar se clicamos em um helper de luz
+        const intersectsHelpers = this.raycaster.intersectObjects(this.lightHelpers, true);
+        if (intersectsHelpers.length > 0) {
+            // O helper tem uma referência '.light' para a luz real
+            const selectedLight = intersectsHelpers[0].object.light;
+            if (selectedLight) {
+                this.transformControls.attach(selectedLight);
+                return; // Encontramos, não precisamos verificar meshes
+            }
+        }
 
-        if (intersects.length > 0) {
-            let selectedObject = intersects[0].object;
+        // 2. Se não, verificar se clicamos em um mesh (modelo, token, cubo)
+        const intersectsMeshes = this.raycaster.intersectObjects(this.objects, true);
+        if (intersectsMeshes.length > 0) {
+            let selectedObject = intersectsMeshes[0].object;
             
             while (selectedObject.parent && selectedObject.parent !== this.scene) {
                 if (this.objects.includes(selectedObject.parent)) {
@@ -270,8 +343,8 @@ class WebApp3D {
             if (this.objects.includes(selectedObject)) {
                 this.transformControls.attach(selectedObject);
             }
-            
         } else {
+            // Clicou fora de tudo
             this.transformControls.detach();
         }
     }
@@ -283,6 +356,7 @@ class WebApp3D {
     }
 
     updateBillboards() {
+        // ... (código inalterado)
         this.cameraTargetVec.set(
             this.camera.position.x, 
             0, 
@@ -300,7 +374,6 @@ class WebApp3D {
             this.tempVec3.sub(this.cameraTargetVec); 
             const angle = Math.atan2(this.tempVec3.x, this.tempVec3.z) + Math.PI;
             
-            // Preserva a rotação X/Z do gizmo
             token.rotation.y = angle;
         }
     }
@@ -310,6 +383,11 @@ class WebApp3D {
         
         this.orbitControls.update();
         this.updateBillboards(); 
+        
+        // NOVO: Atualizar helpers de luz (especialmente SpotLight)
+        for (const helper of this.lightHelpers) {
+            helper.update();
+        }
         
         this.renderer.render(this.scene, this.camera);
     }
