@@ -3,14 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Three.js Editor Básico</title>
+    <title>Three.js VTT Básico</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div id="ui-container">
-        <label for="fileInput">Importar GLB/GLTF:</label>
+        <label for="fileInput">Importar Modelo 3D (GLB):</label>
         <input type="file" id="fileInput" accept=".glb,.gltf">
+        
+        <label for="imageInput">Importar Token 2D (Imagem):</label>
+        <input type="file" id="imageInput" accept="image/png, image/jpeg">
         
         <div id="gizmo-controls">
             <p>Controles (Gizmo):</p>
