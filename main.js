@@ -21,13 +21,44 @@ class WebApp3D {
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);
+        
+        // --- SOMBRAS (Passo 1: Habilitar no Renderer) ---
+        this.renderer.shadowMap.enabled = true;
+        // Algoritmo para suavizar as bordas das sombras
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
 
         // --- Luzes ---
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        // Luz ambiente mais fraca para sombras mais pronunciadas
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
         this.scene.add(ambientLight);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-        directionalLight.position.set(2, 5, 5);
+
+        // Luz direcional (sol) mais forte
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        directionalLight.position.set(5, 10, 7.5); // Posição mais alta
+        
+        // --- SOMBRAS (Passo 2: Configurar a Luz) ---
+        directionalLight.castShadow = true; 
+        
+        // Ajusta a resolução do mapa de sombra (padrão é 512)
+        directionalLight.shadow.mapSize.width = 2048; 
+        directionalLight.shadow.mapSize.height = 2048;
+
+        // Ajusta a "câmera" da sombra (frustum) para cobrir a área do grid
+        directionalLight.shadow.camera.left = -10;
+        directionalLight.shadow.camera.right = 10;
+        directionalLight.shadow.camera.top = 10;
+        directionalLight.shadow.camera.bottom = -10;
+        
+        // **O PONTO CRÍTICO para evitar "hashuras" (shadow acne)**
+        // Um pequeno bias negativo "empurra" a sombra do objeto.
+        directionalLight.shadow.bias = -0.0005; 
+        directionalLight.shadow.normalBias = 0.01; // Ajuste baseado na normal (evita acne em superfícies curvas)
+
         this.scene.add(directionalLight);
+        
+        // Helper para visualizar a câmera da sombra (descomente para depurar)
+        // const shadowCamHelper = new THREE.CameraHelper(directionalLight.shadow.camera);
+        // this.scene.add(shadowCamHelper);
 
         // --- Controles de Câmera (Navegação) ---
         this.orbitControls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -44,16 +75,26 @@ class WebApp3D {
         // --- Helpers ---
         this.scene.add(new THREE.GridHelper(10, 10));
         
+        // --- SOMBRAS (Passo 3: Adicionar o Chão) ---
+        // O GridHelper não recebe sombras, então adicionamos um plano.
+        const groundGeometry = new THREE.PlaneGeometry(10, 10);
+        // Usamos ShadowMaterial para um chão "invisível" que apenas recebe sombras
+        const groundMaterial = new THREE.ShadowMaterial({ opacity: 0.5 }); 
+        
+        const groundPlane = new THREE.Mesh(groundGeometry, groundMaterial);
+        groundPlane.rotation.x = -Math.PI / 2; // Deita o plano
+        groundPlane.position.y = -0.01; // Um pouco abaixo do grid
+        groundPlane.receiveShadow = true; // **Obrigatório**
+        this.scene.add(groundPlane);
+        
         // --- Gerenciamento de Objetos ---
         this.objects = []; 
         this.raycaster = new THREE.Raycaster();
         this.pointer = new THREE.Vector2();
         
         this.billboardTokens = [];
-        
-        // Vetores temporários para otimização
-        this.tempVec3 = new THREE.Vector3(); // Para lookAt
-        this.cameraTargetVec = new THREE.Vector3(); // Para cálculo de ângulo
+        this.tempVec3 = new THREE.Vector3(); 
+        this.cameraTargetVec = new THREE.Vector3();
 
         // --- Loaders ---
         this.gltfLoader = new GLTFLoader();
@@ -77,12 +118,15 @@ class WebApp3D {
         const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
         const cube = new THREE.Mesh(geometry, material);
         cube.position.y = 0.5;
+        
+        // ATUALIZADO (SOMBRAS)
+        cube.castShadow = true;
+        cube.receiveShadow = true; // O cubo pode receber sombra de outros objetos
+
         this.scene.add(cube);
         
         this.objects.push(cube);
         this.transformControls.attach(cube);
-        
-        // Foca a câmera no objeto inicial
         this.orbitControls.target.copy(cube.position);
     }
 
@@ -132,12 +176,19 @@ class WebApp3D {
         this.gltfLoader.load(url, 
             (gltf) => {
                 const model = gltf.scene;
+                
+                // ATUALIZADO (SOMBRAS): Habilita sombras para todo o modelo
+                model.traverse((node) => {
+                    if (node.isMesh) {
+                        node.castShadow = true;
+                        node.receiveShadow = true;
+                    }
+                });
+
                 this.scene.add(model);
                 this.objects.push(model); 
                 this.transformControls.attach(model);
                 
-                // **MELHORIA:** Foca a câmera no novo objeto
-                // (Calcula o centro do modelo para um foco mais preciso, se houver)
                 const box = new THREE.Box3().setFromObject(model);
                 const center = box.getCenter(new THREE.Vector3());
                 this.orbitControls.target.copy(center);
@@ -160,7 +211,7 @@ class WebApp3D {
 
         this.textureLoader.load(url, (texture) => {
             const aspect = texture.image.width / texture.image.height;
-            const height = 1.7; // Altura padrão
+            const height = 1.7; 
             const width = height * aspect;
 
             const geometry = new THREE.PlaneGeometry(width, height);
@@ -172,16 +223,18 @@ class WebApp3D {
             });
 
             const token = new THREE.Mesh(geometry, material);
-            
-            // Posiciona o token de pé no grid
             token.position.y = height / 2;
+            
+            // ATUALIZADO (SOMBRAS)
+            token.castShadow = true;
+            // É melhor não receber sombra (receiveShadow = false) em um plano 2D,
+            // pois pode parecer estranho. Apenas projetar sombra já "ancora" ele.
 
             this.scene.add(token);
             this.objects.push(token); 
             this.billboardTokens.push(token); 
             this.transformControls.attach(token);
 
-            // **MELHORIA:** Foca a câmera no novo token
             this.orbitControls.target.copy(token.position);
 
             URL.revokeObjectURL(url);
@@ -229,37 +282,25 @@ class WebApp3D {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    // **LÓGICA DE BILLBOARDING ATUALIZADA**
     updateBillboards() {
-        // Obtém a posição da câmera e a projeta no plano XZ
         this.cameraTargetVec.set(
             this.camera.position.x, 
-            0, // Ignora a altura da câmera
+            0, 
             this.camera.position.z
         );
 
         for (const token of this.billboardTokens) {
-            // Se o gizmo estiver rotacionando o token, não faça nada.
-            // Isso permite que o usuário o rotacione (ex: em X) se quiser.
             if (this.transformControls.dragging &&
                 this.transformControls.object === token &&
                 this.transformControls.mode === 'rotate') {
                 continue;
             }
 
-            // Obtém a posição do token e a projeta no plano XZ
             this.tempVec3.set(token.position.x, 0, token.position.z);
-            
-            // Calcula o vetor (direção) do token para a câmera no plano XZ
-            this.tempVec3.sub(this.cameraTargetVec); // Vetor da câmera para o token
-
-            // Calcula o ângulo em radianos usando atan2
-            // O eixo +Z do 'Plane' aponta para nós por padrão, então adicionamos PI (180 graus)
-            // para fazer a 'frente' do plano (a textura) encarar a câmera.
+            this.tempVec3.sub(this.cameraTargetVec); 
             const angle = Math.atan2(this.tempVec3.x, this.tempVec3.z) + Math.PI;
-
-            // Aplica a rotação APENAS no eixo Y.
-            // As rotações X e Z (controladas pelo gizmo) são preservadas.
+            
+            // Preserva a rotação X/Z do gizmo
             token.rotation.y = angle;
         }
     }
@@ -268,8 +309,6 @@ class WebApp3D {
         requestAnimationFrame(this.animate);
         
         this.orbitControls.update();
-        
-        // Atualiza os tokens antes de renderizar
         this.updateBillboards(); 
         
         this.renderer.render(this.scene, this.camera);
