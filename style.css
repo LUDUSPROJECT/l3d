@@ -37,16 +37,52 @@ body {
     margin-bottom: 15px;
 }
 
-#gizmo-controls p {
+#ui-container button {
+    display: block;
+    width: 100%;
+    padding: 5px;
+    margin-top: 5px;
+    cursor: pointer;
+}
+
+/* Separação dos painéis de UI */
+#import-controls, #light-controls, #gizmo-controls {
+    margin-bottom: 15px;
+}
+#gizmo-controls {
+    margin-bottom: 0;
+}
+
+#light-controls p, #gizmo-controls p {
     margin-top: 0;
     margin-bottom: 5px;
     font-weight: bold;
 }
 
-#gizmo-controls button {
-    display: block;
-    width: 120px;
-    padding: 5px;
-    margin-top: 5px;
-    cursor: pointer;
+
+/* --- NOVO: Painel de Edição de Luz --- */
+
+#light-editor-panel {
+    position: fixed;
+    top: 15px;
+    right: 15px; /* Posiciona no canto oposto */
+    z-index: 10;
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #444;
+}
+
+#light-editor-panel h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+#light-editor-panel label {
+    margin-right: 10px;
+}
+
+/* Classe helper para ocultar/exibir */
+.hidden {
+    display: none;
 }
