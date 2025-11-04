@@ -37,7 +37,6 @@ class WebApp3D {
         this.transformControls = new TransformControls(this.camera, this.renderer.domElement);
         this.scene.add(this.transformControls);
 
-        // Desabilitar OrbitControls ao usar TransformControls
         this.transformControls.addEventListener('dragging-changed', (event) => {
             this.orbitControls.enabled = !event.value;
         });
@@ -46,12 +45,19 @@ class WebApp3D {
         this.scene.add(new THREE.GridHelper(10, 10));
         
         // --- Gerenciamento de Objetos ---
-        this.objects = []; // Lista de objetos que podem ser selecionados
+        this.objects = []; // Lista de objetos selecionáveis
         this.raycaster = new THREE.Raycaster();
         this.pointer = new THREE.Vector2();
+        
+        // NOVO: Lista para tokens que devem encarar a câmera
+        this.billboardTokens = [];
+        // NOVO: Vetor temporário para otimização no loop
+        this.tempVec3 = new THREE.Vector3();
 
         // --- Loaders ---
         this.gltfLoader = new GLTFLoader();
+        // NOVO: Loader para texturas de token
+        this.textureLoader = new THREE.TextureLoader();
 
         // Adicionar um objeto inicial (Cubo)
         this.addInitialObject();
@@ -73,7 +79,6 @@ class WebApp3D {
         cube.position.y = 0.5;
         this.scene.add(cube);
         
-        // Adiciona à lista de selecionáveis e anexa o gizmo
         this.objects.push(cube);
         this.transformControls.attach(cube);
     }
@@ -101,16 +106,21 @@ class WebApp3D {
             }
         });
 
-        // Importador de Arquivos
+        // Importador de Modelo 3D (GLB)
         document.getElementById('fileInput').addEventListener('change', (event) => {
-            this.handleFileImport(event);
+            this.handleGLBImport(event);
+        });
+
+        // NOVO: Importador de Token 2D (Imagem)
+        document.getElementById('imageInput').addEventListener('change', (event) => {
+            this.handleImageImport(event);
         });
         
         // Seleção de Objeto (Clique)
         this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown);
     }
 
-    handleFileImport(event) {
+    handleGLBImport(event) {
         const file = event.target.files[0];
         if (!file) return;
 
@@ -120,11 +130,11 @@ class WebApp3D {
             (gltf) => {
                 const model = gltf.scene;
                 this.scene.add(model);
-                this.objects.push(model); // Adiciona o grupo do modelo à lista de selecionáveis
-                this.transformControls.attach(model); // Anexa o gizmo ao novo modelo
-                URL.revokeObjectURL(url); // Libera memória
+                this.objects.push(model); 
+                this.transformControls.attach(model);
+                URL.revokeObjectURL(url);
             },
-            undefined, // onProgress (opcional)
+            undefined, 
             (error) => {
                 console.error('Erro ao carregar o modelo GLB.', error);
                 URL.revokeObjectURL(url);
@@ -132,22 +142,65 @@ class WebApp3D {
         );
     }
 
+    // NOVO: Método para importar tokens de imagem
+    handleImageImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const url = URL.createObjectURL(file);
+
+        this.textureLoader.load(url, (texture) => {
+            // Define o aspect ratio (proporção) do token baseado na imagem
+            const aspect = texture.image.width / texture.image.height;
+            const height = 1.7; // Altura padrão (ex: 1.70m)
+            const width = height * aspect;
+
+            // Cria o plano
+            const geometry = new THREE.PlaneGeometry(width, height);
+            
+            // Cria o material.
+            // 'transparent: true' é crucial para PNGs
+            // 'side: THREE.DoubleSide' garante que seja visível de trás
+            const material = new THREE.MeshStandardMaterial({
+                map: texture,
+                transparent: true,
+                side: THREE.DoubleSide,
+                alphaTest: 0.1 // Evita bordas transparentes "clicáveis"
+            });
+
+            const token = new THREE.Mesh(geometry, material);
+            
+            // Posiciona o token de pé no grid (metade da altura para cima)
+            token.position.y = height / 2;
+
+            this.scene.add(token);
+            this.objects.push(token); // Adiciona aos selecionáveis
+            this.billboardTokens.push(token); // Adiciona aos que giram
+            this.transformControls.attach(token);
+
+            URL.revokeObjectURL(url);
+        },
+        undefined,
+        (error) => {
+            console.error('Erro ao carregar a imagem do token.', error);
+            URL.revokeObjectURL(url);
+        });
+    }
+
     onPointerDown(event) {
-        // Se estivermos usando o gizmo, não acione o raycaster
         if (this.transformControls.dragging) return;
         
-        // Calcula a posição do ponteiro em coordenadas normalizadas (-1 a +1)
         this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
         this.pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
         this.raycaster.setFromCamera(this.pointer, this.camera);
         
-        // Verifica interseções (recursive 'true' para checar filhos dos modelos)
         const intersects = this.raycaster.intersectObjects(this.objects, true);
 
         if (intersects.length > 0) {
-            // Lógica para encontrar o objeto pai (raiz) que está na lista 'this.objects'
             let selectedObject = intersects[0].object;
+            
+            // Lógica para encontrar o objeto raiz (raiz)
             while (selectedObject.parent && selectedObject.parent !== this.scene) {
                 if (this.objects.includes(selectedObject.parent)) {
                     selectedObject = selectedObject.parent;
@@ -156,11 +209,12 @@ class WebApp3D {
                 selectedObject = selectedObject.parent;
             }
 
-            // Anexa o gizmo ao objeto raiz selecionado
-            this.transformControls.attach(selectedObject);
+            // Garante que estamos selecionando o objeto raiz que está na lista
+            if (this.objects.includes(selectedObject)) {
+                this.transformControls.attach(selectedObject);
+            }
             
         } else {
-            // Desanexa o gizmo se clicar fora
             this.transformControls.detach();
         }
     }
@@ -171,10 +225,29 @@ class WebApp3D {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
+    // NOVO: Método para atualizar a rotação dos tokens
+    updateBillboards() {
+        for (const token of this.billboardTokens) {
+            // 1. Copia a posição da câmera
+            this.tempVec3.copy(this.camera.position);
+            
+            // 2. Força o Y (altura) do alvo a ser o mesmo Y do token
+            // Esta é a lógica chave que impede a inclinação vertical.
+            this.tempVec3.y = token.position.y;
+            
+            // 3. Faz o token "olhar" para a posição horizontal da câmera
+            token.lookAt(this.tempVec3);
+        }
+    }
+
     animate() {
         requestAnimationFrame(this.animate);
         
         this.orbitControls.update();
+        
+        // NOVO: Atualiza os tokens antes de renderizar
+        this.updateBillboards(); 
+        
         this.renderer.render(this.scene, this.camera);
     }
 }
