@@ -3,43 +3,328 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Three.js VTT Editor</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
+    <title>Three.js VTT Editor (Tailwind UI)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    </head>
+<body class="bg-gray-900 text-white font-sans">
 
-    <div id="ui-container">
+    <div class="fixed top-4 left-4 z-10 bg-gray-800 bg-opacity-80 p-4 rounded-lg shadow-lg border border-gray-700 w-72 space-y-4">
         
-        <div id="import-controls">
-            <label for="fileInput">Importar Modelo 3D (GLB):</label>
-            <input type="file" id="fileInput" accept=".glb,.gltf">
-            
-            <label for="imageInput">Importar Token 2D (Imagem):</label>
-            <input type="file" id="imageInput" accept="image/png, image/jpeg">
+        <div class="space-y-2">
+            <div>
+                <label for="fileInput" class="block text-sm font-medium text-gray-300 mb-1">Importar Modelo 3D (GLB):</label>
+                <input type="file" id="fileInput" accept=".glb,.gltf"
+                       class="block w-full text-sm text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+            </div>
+            <div>
+                <label for="imageInput" class="block text-sm font-medium text-gray-300 mb-1">Importar Token 2D (Imagem):</label>
+                <input type="file" id="imageInput" accept="image/png, image/jpeg"
+                       class="block w-full text-sm text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+            </div>
         </div>
 
-        <div id="light-controls">
-            <p>Adicionar Luzes:</p>
-            <button id="btn-add-pointlight">Luz de Ponto (P)</button>
-            <button id="btn-add-spotlight">Luz de Destaque (L)</button>
+        <div class="space-y-2 border-t border-gray-700 pt-4">
+            <p class="font-bold text-gray-200">Adicionar Luzes</p>
+            <button id="btn-add-pointlight" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Luz de Ponto (P)</button>
+            <button id="btn-add-spotlight" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Luz de Destaque (L)</button>
         </div>
 
-        <div id="gizmo-controls">
-            <p>Controles (Gizmo):</p>
-            <button id="btn-translate">Translate (W)</button>
-            <button id="btn-rotate">Rotate (E)</button>
-            <button id="btn-scale">Scale (R)</button>
+        <div class="space-y-2 border-t border-gray-700 pt-4">
+            <p class="font-bold text-gray-200">Controles (Gizmo)</p>
+            <button id="btn-translate" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Translate (W)</button>
+            <button id="btn-rotate" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Rotate (E)</button>
+            <button id="btn-scale" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Scale (R)</button>
         </div>
 
     </div>
 
-    <div id="light-editor-panel" class="hidden">
-        <h4>Editar Luz Selecionada</h4>
-        <label for="light-color-picker">Cor da Luz:</label>
-        <input type="color" id="light-color-picker" value="#ffffff">
+    <div id="light-editor-panel" 
+         class="fixed top-4 right-4 z-10 bg-gray-800 bg-opacity-80 p-4 rounded-lg shadow-lg border border-gray-700 w-72 hidden">
+        
+        <h4 class="font-bold text-lg mb-4 text-gray-200">Editar Luz Selecionada</h4>
+        
+        <div class="flex items-center justify-between">
+            <label for="light-color-picker" class="text-sm font-medium text-gray-300">Cor da Luz:</label>
+            <input type="color" id="light-color-picker" value="#ffffff" 
+                   class="w-12 h-8 p-0 border-none rounded cursor-pointer bg-gray-700">
+        </div>
     </div>
 
-    <canvas id="webgl-canvas"></canvas>
+    <canvas id="webgl-canvas" class="fixed top-0 left-0 outline-none z-0"></canvas>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module" src="main.js"></script>
+
+</body>
+</html><!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js VTT Editor (Tailwind UI)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    </head>
+<body class="bg-gray-900 text-white font-sans">
+
+    <div class="fixed top-4 left-4 z-10 bg-gray-800 bg-opacity-80 p-4 rounded-lg shadow-lg border border-gray-700 w-72 space-y-4">
+        
+        <div class="space-y-2">
+            <div>
+                <label for="fileInput" class="block text-sm font-medium text-gray-300 mb-1">Importar Modelo 3D (GLB):</label>
+                <input type="file" id="fileInput" accept=".glb,.gltf"
+                       class="block w-full text-sm text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+            </div>
+            <div>
+                <label for="imageInput" class="block text-sm font-medium text-gray-300 mb-1">Importar Token 2D (Imagem):</label>
+                <input type="file" id="imageInput" accept="image/png, image/jpeg"
+                       class="block w-full text-sm text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+            </div>
+        </div>
+
+        <div class="space-y-2 border-t border-gray-700 pt-4">
+            <p class="font-bold text-gray-200">Adicionar Luzes</p>
+            <button id="btn-add-pointlight" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Luz de Ponto (P)</button>
+            <button id="btn-add-spotlight" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Luz de Destaque (L)</button>
+        </div>
+
+        <div class="space-y-2 border-t border-gray-700 pt-4">
+            <p class="font-bold text-gray-200">Controles (Gizmo)</p>
+            <button id="btn-translate" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Translate (W)</button>
+            <button id="btn-rotate" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Rotate (E)</button>
+            <button id="btn-scale" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Scale (R)</button>
+        </div>
+
+    </div>
+
+    <div id="light-editor-panel" 
+         class="fixed top-4 right-4 z-10 bg-gray-800 bg-opacity-80 p-4 rounded-lg shadow-lg border border-gray-700 w-72 hidden">
+        
+        <h4 class="font-bold text-lg mb-4 text-gray-200">Editar Luz Selecionada</h4>
+        
+        <div class="flex items-center justify-between">
+            <label for="light-color-picker" class="text-sm font-medium text-gray-300">Cor da Luz:</label>
+            <input type="color" id="light-color-picker" value="#ffffff" 
+                   class="w-12 h-8 p-0 border-none rounded cursor-pointer bg-gray-700">
+        </div>
+    </div>
+
+    <canvas id="webgl-canvas" class="fixed top-0 left-0 outline-none z-0"></canvas>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module" src="main.js"></script>
+
+</body>
+</html><!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js VTT Editor (Tailwind UI)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    </head>
+<body class="bg-gray-900 text-white font-sans">
+
+    <div class="fixed top-4 left-4 z-10 bg-gray-800 bg-opacity-80 p-4 rounded-lg shadow-lg border border-gray-700 w-72 space-y-4">
+        
+        <div class="space-y-2">
+            <div>
+                <label for="fileInput" class="block text-sm font-medium text-gray-300 mb-1">Importar Modelo 3D (GLB):</label>
+                <input type="file" id="fileInput" accept=".glb,.gltf"
+                       class="block w-full text-sm text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+            </div>
+            <div>
+                <label for="imageInput" class="block text-sm font-medium text-gray-300 mb-1">Importar Token 2D (Imagem):</label>
+                <input type="file" id="imageInput" accept="image/png, image/jpeg"
+                       class="block w-full text-sm text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+            </div>
+        </div>
+
+        <div class="space-y-2 border-t border-gray-700 pt-4">
+            <p class="font-bold text-gray-200">Adicionar Luzes</p>
+            <button id="btn-add-pointlight" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Luz de Ponto (P)</button>
+            <button id="btn-add-spotlight" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Luz de Destaque (L)</button>
+        </div>
+
+        <div class="space-y-2 border-t border-gray-700 pt-4">
+            <p class="font-bold text-gray-200">Controles (Gizmo)</p>
+            <button id="btn-translate" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Translate (W)</button>
+            <button id="btn-rotate" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Rotate (E)</button>
+            <button id="btn-scale" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Scale (R)</button>
+        </div>
+
+    </div>
+
+    <div id="light-editor-panel" 
+         class="fixed top-4 right-4 z-10 bg-gray-800 bg-opacity-80 p-4 rounded-lg shadow-lg border border-gray-700 w-72 hidden">
+        
+        <h4 class="font-bold text-lg mb-4 text-gray-200">Editar Luz Selecionada</h4>
+        
+        <div class="flex items-center justify-between">
+            <label for="light-color-picker" class="text-sm font-medium text-gray-300">Cor da Luz:</label>
+            <input type="color" id="light-color-picker" value="#ffffff" 
+                   class="w-12 h-8 p-0 border-none rounded cursor-pointer bg-gray-700">
+        </div>
+    </div>
+
+    <canvas id="webgl-canvas" class="fixed top-0 left-0 outline-none z-0"></canvas>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module" src="main.js"></script>
+
+</body>
+</html><!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js VTT Editor (Tailwind UI)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    </head>
+<body class="bg-gray-900 text-white font-sans">
+
+    <div class="fixed top-4 left-4 z-10 bg-gray-800 bg-opacity-80 p-4 rounded-lg shadow-lg border border-gray-700 w-72 space-y-4">
+        
+        <div class="space-y-2">
+            <div>
+                <label for="fileInput" class="block text-sm font-medium text-gray-300 mb-1">Importar Modelo 3D (GLB):</label>
+                <input type="file" id="fileInput" accept=".glb,.gltf"
+                       class="block w-full text-sm text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+            </div>
+            <div>
+                <label for="imageInput" class="block text-sm font-medium text-gray-300 mb-1">Importar Token 2D (Imagem):</label>
+                <input type="file" id="imageInput" accept="image/png, image/jpeg"
+                       class="block w-full text-sm text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+            </div>
+        </div>
+
+        <div class="space-y-2 border-t border-gray-700 pt-4">
+            <p class="font-bold text-gray-200">Adicionar Luzes</p>
+            <button id="btn-add-pointlight" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Luz de Ponto (P)</button>
+            <button id="btn-add-spotlight" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Luz de Destaque (L)</button>
+        </div>
+
+        <div class="space-y-2 border-t border-gray-700 pt-4">
+            <p class="font-bold text-gray-200">Controles (Gizmo)</p>
+            <button id="btn-translate" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Translate (W)</button>
+            <button id="btn-rotate" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Rotate (E)</button>
+            <button id="btn-scale" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Scale (R)</button>
+        </div>
+
+    </div>
+
+    <div id="light-editor-panel" 
+         class="fixed top-4 right-4 z-10 bg-gray-800 bg-opacity-80 p-4 rounded-lg shadow-lg border border-gray-700 w-72 hidden">
+        
+        <h4 class="font-bold text-lg mb-4 text-gray-200">Editar Luz Selecionada</h4>
+        
+        <div class="flex items-center justify-between">
+            <label for="light-color-picker" class="text-sm font-medium text-gray-300">Cor da Luz:</label>
+            <input type="color" id="light-color-picker" value="#ffffff" 
+                   class="w-12 h-8 p-0 border-none rounded cursor-pointer bg-gray-700">
+        </div>
+    </div>
+
+    <canvas id="webgl-canvas" class="fixed top-0 left-0 outline-none z-0"></canvas>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module" src="main.js"></script>
+
+</body>
+</html><!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js VTT Editor (Tailwind UI)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    </head>
+<body class="bg-gray-900 text-white font-sans">
+
+    <div class="fixed top-4 left-4 z-10 bg-gray-800 bg-opacity-80 p-4 rounded-lg shadow-lg border border-gray-700 w-72 space-y-4">
+        
+        <div class="space-y-2">
+            <div>
+                <label for="fileInput" class="block text-sm font-medium text-gray-300 mb-1">Importar Modelo 3D (GLB):</label>
+                <input type="file" id="fileInput" accept=".glb,.gltf"
+                       class="block w-full text-sm text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+            </div>
+            <div>
+                <label for="imageInput" class="block text-sm font-medium text-gray-300 mb-1">Importar Token 2D (Imagem):</label>
+                <input type="file" id="imageInput" accept="image/png, image/jpeg"
+                       class="block w-full text-sm text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+            </div>
+        </div>
+
+        <div class="space-y-2 border-t border-gray-700 pt-4">
+            <p class="font-bold text-gray-200">Adicionar Luzes</p>
+            <button id="btn-add-pointlight" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Luz de Ponto (P)</button>
+            <button id="btn-add-spotlight" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Luz de Destaque (L)</button>
+        </div>
+
+        <div class="space-y-2 border-t border-gray-700 pt-4">
+            <p class="font-bold text-gray-200">Controles (Gizmo)</p>
+            <button id="btn-translate" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Translate (W)</button>
+            <button id="btn-rotate" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Rotate (E)</button>
+            <button id="btn-scale" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded text-sm transition-colors">Scale (R)</button>
+        </div>
+
+    </div>
+
+    <div id="light-editor-panel" 
+         class="fixed top-4 right-4 z-10 bg-gray-800 bg-opacity-80 p-4 rounded-lg shadow-lg border border-gray-700 w-72 hidden">
+        
+        <h4 class="font-bold text-lg mb-4 text-gray-200">Editar Luz Selecionada</h4>
+        
+        <div class="flex items-center justify-between">
+            <label for="light-color-picker" class="text-sm font-medium text-gray-300">Cor da Luz:</label>
+            <input type="color" id="light-color-picker" value="#ffffff" 
+                   class="w-12 h-8 p-0 border-none rounded cursor-pointer bg-gray-700">
+        </div>
+    </div>
+
+    <canvas id="webgl-canvas" class="fixed top-0 left-0 outline-none z-0"></canvas>
 
     <script type="importmap">
     {
