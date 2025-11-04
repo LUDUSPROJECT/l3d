@@ -7,7 +7,6 @@ class WebApp3D {
     constructor() {
         // --- Elementos do DOM ---
         this.canvas = document.getElementById('webgl-canvas');
-        // NOVO: UI de Edição de Luz
         this.lightEditorPanel = document.getElementById('light-editor-panel');
         this.lightColorPicker = document.getElementById('light-color-picker');
 
@@ -46,7 +45,6 @@ class WebApp3D {
         directionalLight.shadow.bias = -0.0005; 
         directionalLight.shadow.normalBias = 0.01;
         this.scene.add(directionalLight);
-        // Não adicionamos a luz direcional ao array de 'luzes selecionáveis'
         
         // --- Controles de Câmera (Navegação) ---
         this.orbitControls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -76,7 +74,6 @@ class WebApp3D {
         this.objects = []; // Meshes (Cubos, Modelos, Tokens)
         this.billboardTokens = [];
         
-        // NOVO: Arrays para luzes dinâmicas e seus helpers
         this.lights = [];
         this.lightHelpers = [];
         
@@ -98,7 +95,6 @@ class WebApp3D {
         this.animate = this.animate.bind(this);
         this.onPointerDown = this.onPointerDown.bind(this);
         
-        // NOVO: Binds para novas funções
         this.addPointLight = this.addPointLight.bind(this);
         this.addSpotLight = this.addSpotLight.bind(this);
         this.onGizmoObjectChange = this.onGizmoObjectChange.bind(this);
@@ -134,15 +130,14 @@ class WebApp3D {
 
         // --- Atalhos de Teclado (W, E, R, P, L) ---
         window.addEventListener('keydown', (event) => {
-            // Não acionar atalhos se estiver digitando em um input (como o de cor)
             if (event.target.tagName.toLowerCase() === 'input') return;
 
             switch (event.key.toLowerCase()) {
                 case 'w': this.transformControls.setMode('translate'); break;
                 case 'e': this.transformControls.setMode('rotate'); break;
                 case 'r': this.transformControls.setMode('scale'); break;
-                case 'p': this.addPointLight(); break; // NOVO: Atalho P
-                case 'l': this.addSpotLight(); break; // NOVO: Atalho L
+                case 'p': this.addPointLight(); break; 
+                case 'l': this.addSpotLight(); break; 
             }
         });
 
@@ -153,61 +148,62 @@ class WebApp3D {
         // --- Seleção de Objeto (Clique) ---
         this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown);
 
-        // --- NOVO: Listeners de Luz ---
+        // --- Listeners de Luz ---
         document.getElementById('btn-add-pointlight').addEventListener('click', this.addPointLight);
         document.getElementById('btn-add-spotlight').addEventListener('click', this.addSpotLight);
 
-        // --- NOVO: Listener de mudança no seletor de cor ---
+        // --- Listener de mudança no seletor de cor ---
         this.lightColorPicker.addEventListener('input', this.updateSelectedLightColor);
 
-        // --- NOVO: Listener de mudança de objeto no Gizmo ---
-        // Este é o ponto central para exibir/ocultar a UI de edição
-        this.transformControls.addEventListener('objectChange', this.onGizGobjectChange);
+        // --- Listener de mudança de objeto no Gizmo ---
+        //
+        // *** ESTA É A LINHA CORRIGIDA ***
+        //
+        this.transformControls.addEventListener('objectChange', this.onGizmoObjectChange);
     }
 
-    // --- NOVO: Adiciona PointLight ---
+    // --- Adiciona PointLight ---
     addPointLight() {
-        const light = new THREE.PointLight(0xffffff, 1, 10); // Cor, Intensidade, Distância
-        light.position.set(0, 2, 0); // Posição inicial
+        const light = new THREE.PointLight(0xffffff, 1, 10); 
+        light.position.set(0, 2, 0); 
         light.castShadow = true;
-        light.shadow.bias = -0.001; // Bias para point lights
+        light.shadow.bias = -0.001; 
         light.shadow.mapSize.width = 1024;
         light.shadow.mapSize.height = 1024;
         
-        const helper = new THREE.PointLightHelper(light, 0.5); // Raio do helper
+        const helper = new THREE.PointLightHelper(light, 0.5); 
         
         this.scene.add(light);
         this.scene.add(helper);
         this.lights.push(light);
         this.lightHelpers.push(helper);
         
-        this.transformControls.attach(light); // Seleciona a nova luz
+        this.transformControls.attach(light); 
     }
 
-    // --- NOVO: Adiciona SpotLight ---
+    // --- Adiciona SpotLight ---
     addSpotLight() {
-        const light = new THREE.SpotLight(0xffffff, 1.5, 20, Math.PI / 6, 0.2); // Cor, Int, Dist, Ângulo, Penumbra
+        const light = new THREE.SpotLight(0xffffff, 1.5, 20, Math.PI / 6, 0.2); 
         light.position.set(0, 3, 0);
-        light.target.position.set(0, 0, 0); // O alvo padrão é (0,0,0)
+        light.target.position.set(0, 0, 0); 
         
         light.castShadow = true;
         light.shadow.bias = -0.001;
         light.shadow.mapSize.width = 1024;
         light.shadow.mapSize.height = 1024;
 
-        // O helper do SpotLight precisa da luz E seu alvo
         const helper = new THREE.SpotLightHelper(light);
         
         this.scene.add(light);
-        this.scene.add(light.target); // Importante: adicionar o alvo à cena
+        this.scene.add(light.target); 
         this.scene.add(helper);
         this.lights.push(light);
         this.lightHelpers.push(helper);
 
-        this.transformControls.attach(light); // Seleciona a nova luz
+        this.transformControls.attach(light); 
     }
 
-    // --- NOVO: Atualiza cor da luz selecionada ---
+    // --- Atualiza cor da luz selecionada ---
     updateSelectedLightColor() {
         const selectedObject = this.transformControls.object;
         if (selectedObject && (selectedObject.isPointLight || selectedObject.isSpotLight)) {
@@ -215,7 +211,7 @@ class WebApp3D {
         }
     }
 
-    // --- NOVO: Controla a visibilidade do painel de edição ---
+    // --- Controla a visibilidade do painel de edição ---
     onGizmoObjectChange() {
         const selectedObject = this.transformControls.object;
         
@@ -231,7 +227,6 @@ class WebApp3D {
     }
 
     handleGLBImport(event) {
-        // ... (código inalterado)
         const file = event.target.files[0];
         if (!file) return;
 
@@ -267,7 +262,6 @@ class WebApp3D {
     }
 
     handleImageImport(event) {
-        // ... (código inalterado)
         const file = event.target.files[0];
         if (!file) return;
 
@@ -306,7 +300,6 @@ class WebApp3D {
         });
     }
 
-    // --- ATUALIZADO: onPointerDown agora verifica Meshes E Helpers ---
     onPointerDown(event) {
         if (this.transformControls.dragging) return;
         
@@ -315,15 +308,13 @@ class WebApp3D {
 
         this.raycaster.setFromCamera(this.pointer, this.camera);
         
-        // --- Raycast em duas etapas ---
         // 1. Verificar se clicamos em um helper de luz
         const intersectsHelpers = this.raycaster.intersectObjects(this.lightHelpers, true);
         if (intersectsHelpers.length > 0) {
-            // O helper tem uma referência '.light' para a luz real
             const selectedLight = intersectsHelpers[0].object.light;
             if (selectedLight) {
                 this.transformControls.attach(selectedLight);
-                return; // Encontramos, não precisamos verificar meshes
+                return; 
             }
         }
 
@@ -349,14 +340,13 @@ class WebApp3D {
         }
     }
 
-    onResize() {
+onResize() {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
     updateBillboards() {
-        // ... (código inalterado)
         this.cameraTargetVec.set(
             this.camera.position.x, 
             0, 
@@ -384,7 +374,6 @@ class WebApp3D {
         this.orbitControls.update();
         this.updateBillboards(); 
         
-        // NOVO: Atualizar helpers de luz (especialmente SpotLight)
         for (const helper of this.lightHelpers) {
             helper.update();
         }
