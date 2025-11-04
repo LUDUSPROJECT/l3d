@@ -45,18 +45,18 @@ class WebApp3D {
         this.scene.add(new THREE.GridHelper(10, 10));
         
         // --- Gerenciamento de Objetos ---
-        this.objects = []; // Lista de objetos selecionáveis
+        this.objects = []; 
         this.raycaster = new THREE.Raycaster();
         this.pointer = new THREE.Vector2();
         
-        // NOVO: Lista para tokens que devem encarar a câmera
         this.billboardTokens = [];
-        // NOVO: Vetor temporário para otimização no loop
-        this.tempVec3 = new THREE.Vector3();
+        
+        // Vetores temporários para otimização
+        this.tempVec3 = new THREE.Vector3(); // Para lookAt
+        this.cameraTargetVec = new THREE.Vector3(); // Para cálculo de ângulo
 
         // --- Loaders ---
         this.gltfLoader = new GLTFLoader();
-        // NOVO: Loader para texturas de token
         this.textureLoader = new THREE.TextureLoader();
 
         // Adicionar um objeto inicial (Cubo)
@@ -81,6 +81,9 @@ class WebApp3D {
         
         this.objects.push(cube);
         this.transformControls.attach(cube);
+        
+        // Foca a câmera no objeto inicial
+        this.orbitControls.target.copy(cube.position);
     }
 
     setupEventListeners() {
@@ -111,7 +114,7 @@ class WebApp3D {
             this.handleGLBImport(event);
         });
 
-        // NOVO: Importador de Token 2D (Imagem)
+        // Importador de Token 2D (Imagem)
         document.getElementById('imageInput').addEventListener('change', (event) => {
             this.handleImageImport(event);
         });
@@ -132,6 +135,13 @@ class WebApp3D {
                 this.scene.add(model);
                 this.objects.push(model); 
                 this.transformControls.attach(model);
+                
+                // **MELHORIA:** Foca a câmera no novo objeto
+                // (Calcula o centro do modelo para um foco mais preciso, se houver)
+                const box = new THREE.Box3().setFromObject(model);
+                const center = box.getCenter(new THREE.Vector3());
+                this.orbitControls.target.copy(center);
+                
                 URL.revokeObjectURL(url);
             },
             undefined, 
@@ -142,7 +152,6 @@ class WebApp3D {
         );
     }
 
-    // NOVO: Método para importar tokens de imagem
     handleImageImport(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -150,33 +159,30 @@ class WebApp3D {
         const url = URL.createObjectURL(file);
 
         this.textureLoader.load(url, (texture) => {
-            // Define o aspect ratio (proporção) do token baseado na imagem
             const aspect = texture.image.width / texture.image.height;
-            const height = 1.7; // Altura padrão (ex: 1.70m)
+            const height = 1.7; // Altura padrão
             const width = height * aspect;
 
-            // Cria o plano
             const geometry = new THREE.PlaneGeometry(width, height);
-            
-            // Cria o material.
-            // 'transparent: true' é crucial para PNGs
-            // 'side: THREE.DoubleSide' garante que seja visível de trás
             const material = new THREE.MeshStandardMaterial({
                 map: texture,
                 transparent: true,
                 side: THREE.DoubleSide,
-                alphaTest: 0.1 // Evita bordas transparentes "clicáveis"
+                alphaTest: 0.1 
             });
 
             const token = new THREE.Mesh(geometry, material);
             
-            // Posiciona o token de pé no grid (metade da altura para cima)
+            // Posiciona o token de pé no grid
             token.position.y = height / 2;
 
             this.scene.add(token);
-            this.objects.push(token); // Adiciona aos selecionáveis
-            this.billboardTokens.push(token); // Adiciona aos que giram
+            this.objects.push(token); 
+            this.billboardTokens.push(token); 
             this.transformControls.attach(token);
+
+            // **MELHORIA:** Foca a câmera no novo token
+            this.orbitControls.target.copy(token.position);
 
             URL.revokeObjectURL(url);
         },
@@ -200,7 +206,6 @@ class WebApp3D {
         if (intersects.length > 0) {
             let selectedObject = intersects[0].object;
             
-            // Lógica para encontrar o objeto raiz (raiz)
             while (selectedObject.parent && selectedObject.parent !== this.scene) {
                 if (this.objects.includes(selectedObject.parent)) {
                     selectedObject = selectedObject.parent;
@@ -209,7 +214,6 @@ class WebApp3D {
                 selectedObject = selectedObject.parent;
             }
 
-            // Garante que estamos selecionando o objeto raiz que está na lista
             if (this.objects.includes(selectedObject)) {
                 this.transformControls.attach(selectedObject);
             }
@@ -225,18 +229,38 @@ class WebApp3D {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    // NOVO: Método para atualizar a rotação dos tokens
+    // **LÓGICA DE BILLBOARDING ATUALIZADA**
     updateBillboards() {
+        // Obtém a posição da câmera e a projeta no plano XZ
+        this.cameraTargetVec.set(
+            this.camera.position.x, 
+            0, // Ignora a altura da câmera
+            this.camera.position.z
+        );
+
         for (const token of this.billboardTokens) {
-            // 1. Copia a posição da câmera
-            this.tempVec3.copy(this.camera.position);
+            // Se o gizmo estiver rotacionando o token, não faça nada.
+            // Isso permite que o usuário o rotacione (ex: em X) se quiser.
+            if (this.transformControls.dragging &&
+                this.transformControls.object === token &&
+                this.transformControls.mode === 'rotate') {
+                continue;
+            }
+
+            // Obtém a posição do token e a projeta no plano XZ
+            this.tempVec3.set(token.position.x, 0, token.position.z);
             
-            // 2. Força o Y (altura) do alvo a ser o mesmo Y do token
-            // Esta é a lógica chave que impede a inclinação vertical.
-            this.tempVec3.y = token.position.y;
-            
-            // 3. Faz o token "olhar" para a posição horizontal da câmera
-            token.lookAt(this.tempVec3);
+            // Calcula o vetor (direção) do token para a câmera no plano XZ
+            this.tempVec3.sub(this.cameraTargetVec); // Vetor da câmera para o token
+
+            // Calcula o ângulo em radianos usando atan2
+            // O eixo +Z do 'Plane' aponta para nós por padrão, então adicionamos PI (180 graus)
+            // para fazer a 'frente' do plano (a textura) encarar a câmera.
+            const angle = Math.atan2(this.tempVec3.x, this.tempVec3.z) + Math.PI;
+
+            // Aplica a rotação APENAS no eixo Y.
+            // As rotações X e Z (controladas pelo gizmo) são preservadas.
+            token.rotation.y = angle;
         }
     }
 
@@ -245,7 +269,7 @@ class WebApp3D {
         
         this.orbitControls.update();
         
-        // NOVO: Atualiza os tokens antes de renderizar
+        // Atualiza os tokens antes de renderizar
         this.updateBillboards(); 
         
         this.renderer.render(this.scene, this.camera);
