@@ -1,0 +1,52 @@
+body {
+    margin: 0;
+    overflow: hidden; /* Evita barras de rolagem */
+    font-family: Arial, sans-serif;
+    background-color: #111;
+    color: white;
+}
+
+/* Canvas ocupando a tela toda ao fundo */
+#webgl-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    outline: none;
+    z-index: 1; /* Fica atrás da UI */
+}
+
+/* Container da UI */
+#ui-container {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 10; /* Fica na frente do canvas */
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #444;
+}
+
+#ui-container label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+}
+
+#ui-container input[type="file"] {
+    margin-bottom: 15px;
+}
+
+#gizmo-controls p {
+    margin-top: 0;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+#gizmo-controls button {
+    display: block;
+    width: 120px;
+    padding: 5px;
+    margin-top: 5px;
+    cursor: pointer;
+}
