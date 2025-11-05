@@ -131,7 +131,7 @@
             margin-top: 8px;
         }
         
-        /* NOVO: CSS para Modo Imersivo */
+        /* CSS para Modo Imersivo */
         body.immersive-mode #uiPanel,
         body.immersive-mode #toggleUiBtn {
             display: none;
@@ -145,7 +145,6 @@
                 "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
                 "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/",
                 "three/controls/OrbitControls": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/controls/OrbitControls.js",
-                "three/controls/DragControls": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/controls/DragControls.js",
                 "three/controls/TransformControls": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/controls/TransformControls.js",
                 "three/controls/PointerLockControls": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/controls/PointerLockControls.js",
                 "three/loaders/GLTFLoader": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/loaders/GLTFLoader.js",
@@ -241,6 +240,13 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path><path d="M12 3v1"></path><path d="M20.66 7 20 7.66"></path><path d="M21 12h-1"></path><path d="M20 16.34 20.66 17"></path><path d="M12 21v-1"></path><path d="M7.66 20 7 20.66"></path><path d="M3 12h1"></path><path d="M4 7.66 3.34 7"></path></svg>
                 Adicionar Luz
             </button>
+            
+            <!-- NOVO SELETOR DE LUZ -->
+            <label for="lightSelect" class="slider-label">Selecionar Luz</label>
+            <select id="lightSelect">
+                <option value="none">Nenhuma</option>
+                <!-- Luzes adicionadas aqui via JS -->
+            </select>
         </div>
         
         <div class="control-group">
@@ -300,7 +306,6 @@
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/controls/OrbitControls';
-        import { DragControls } from 'three/controls/DragControls';
         import { TransformControls } from 'three/controls/TransformControls';
         import { PointerLockControls } from 'three/controls/PointerLockControls';
         import { GLTFLoader } from 'three/loaders/GLTFLoader';
@@ -309,7 +314,7 @@
         import { BokehPass } from 'three/postprocessing/BokehPass';
         import { OutputPass } from 'three/postprocessing/OutputPass';
 
-        let scene, camera, renderer, orbitControls, dragControls, transformControls;
+        let scene, camera, renderer, orbitControls, transformControls;
         let groundPlane, ambientLight, sunLight;
         const canvasContainer = document.getElementById('canvasContainer');
         
@@ -360,6 +365,9 @@
         const groundMetalnessSlider = document.getElementById('groundMetalnessSlider');
         const groundMetalnessValue = document.getElementById('groundMetalnessValue');
         
+        // NOVO: Seletor de Luz
+        const lightSelect = document.getElementById('lightSelect');
+        
         // Armazenamento de Recursos Carregados
         const loadedResources = new Map();
 
@@ -374,7 +382,7 @@
         // Lógica de Clique vs Arraste
         let clickTimer = null;
         let isDragging = false;
-        const clickThreshold = 200;
+        const clickThreshold = 300; 
         let dragObject = null;
 
         let customSkyboxResourceName = null;
@@ -450,13 +458,12 @@
                 }
             });
 
-            // Controles de Arraste (DragControls)
-            setupDragControls(); 
-
             // Controles de Transformação (Gizmo)
             transformControls = new TransformControls(camera, renderer.domElement);
             transformControls.addEventListener('dragging-changed', (event) => {
+                // *** CORREÇÃO 2: Desabilita a câmera ao arrastar o gizmo ***
                 if (orbitControls) orbitControls.enabled = !event.value;
+                
                 if (selectedObject) {
                     selectedObject.userData.isGizmoDragging = event.value;
                 }
@@ -543,6 +550,19 @@
             
             // Inputs de Arquivo
             setupFileInputs();
+            
+            // NOVO: Listener do Seletor de Luz
+            lightSelect.addEventListener('change', () => {
+                const selectedId = lightSelect.value;
+                if (selectedId === 'none') {
+                    setSelectedObject(null);
+                } else {
+                    const lightObject = draggableObjects.find(o => o.uuid === selectedId);
+                    if (lightObject) {
+                        setSelectedObject(lightObject);
+                    }
+                }
+            });
         }
         
         // --- FUNÇÕES DE CONTROLES DE CÂMERA ---
@@ -608,14 +628,6 @@
             }
         }
         
-        function setupDragControls() {
-            if (dragControls) {
-                dragControls.dispose();
-            }
-            dragControls = new DragControls(draggableObjects, camera, renderer.domElement);
-            dragControls.enabled = false;
-        }
-
         function animate() {
             requestAnimationFrame(animate);
             const delta = clock.getDelta();
@@ -848,6 +860,7 @@
                 if (obj.userData.type === 'point_light') {
                     data.color = obj.userData.light.color.getHex();
                     data.intensity = obj.userData.light.intensity;
+                    data.name = obj.userData.name; // Salva o nome da luz
                 } else if (obj.userData.type === 'image_sprite' || obj.userData.type === 'model_glb') {
                     data.resourceName = obj.userData.resourceName;
                 }
@@ -889,6 +902,9 @@
                             await addNewToken(data.type, data);
                         }
                     }
+                    
+                    // Atualiza o seletor de luz DEPOIS que todas as luzes foram carregadas
+                    updateLightSelector();
                     
                     if (sceneData.skybox) {
                         if (sceneData.skybox.name === 'custom' && sceneData.skybox.resourceName) {
@@ -967,7 +983,7 @@
                 scene.remove(obj);
             }
             
-            setupDragControls();
+            updateLightSelector(); // Limpa o seletor
         }
 
         // --- Funções de Tokens e Objetos ---
@@ -1031,6 +1047,16 @@
             mesh.userData.isDragging = false;
             mesh.userData.isGizmoDragging = false;
             
+            if (type === 'point_light') {
+                // Seta um nome se não tiver um (do save/load)
+                if (!data.name) {
+                    const lightCount = draggableObjects.filter(o => o.userData.type === 'point_light').length + 1;
+                    mesh.userData.name = `Luz ${lightCount}`;
+                } else {
+                    mesh.userData.name = data.name;
+                }
+            }
+            
             if (type !== 'point_light') {
                 mesh.castShadow = true;
                 mesh.receiveShadow = true;
@@ -1043,7 +1069,11 @@
             }
 
             draggableObjects.push(mesh);
-            setupDragControls();
+            
+            if (type === 'point_light') {
+                updateLightSelector(); // Atualiza o dropdown
+            }
+            
             return mesh;
         }
         
@@ -1053,6 +1083,11 @@
             if (object.userData.type === 'image_sprite') {
                 return getBase ? 0 : object.position.y + object.scale.y / 2;
             } 
+            
+            // Para luzes (que são invisíveis), retorna a posição
+            if (object.userData.type === 'point_light') {
+                return getBase ? object.position.y : object.position.y;
+            }
             
             const box = new THREE.Box3().setFromObject(object);
 
@@ -1084,7 +1119,7 @@
                 return object.scale.y / 2;
             }
 
-            return 0; // Padrão
+            return 0; // Padrão (incluindo luzes)
         }
 
 
@@ -1141,9 +1176,15 @@
                     pointLight.shadow.bias = -0.001;
                     pointLight.shadow.normalBias = 0.05;
                     
-                    const gizmoMaterial = new THREE.MeshBasicMaterial({ color: lightColor, emissive: lightColor });
-                    const gizmoGeometry = new THREE.SphereGeometry(0.1, 16, 8);
+                    // *** CORREÇÃO 1: O material fica invisível, mas o "mesh" (dono da luz) não. ***
+                    const gizmoMaterial = new THREE.MeshBasicMaterial({ color: lightColor });
+                    gizmoMaterial.transparent = true;
+                    gizmoMaterial.opacity = 0;
+                    
+                    const gizmoGeometry = new THREE.SphereGeometry(0.1, 8, 4); // Pode ser minúsculo
                     mesh = new THREE.Mesh(gizmoGeometry, gizmoMaterial); 
+                    
+                    // mesh.visible = false; // <-- ESTA ERA A LINHA DO BUG, REMOVIDA.
                     
                     mesh.add(pointLight);
                     mesh.userData.light = pointLight;
@@ -1161,13 +1202,14 @@
             if (!selectedObject) return;
             
             const objectToDelete = selectedObject;
+            const wasLight = objectToDelete.userData.type === 'point_light';
             
             setSelectedObject(null);
             
             scene.remove(objectToDelete);
             
             if (objectToDelete.userData.light) {
-                scene.remove(objectToDelete.userData.light);
+                // A luz é filha, será removida junto
             }
 
             if (objectToDelete.geometry) objectToDelete.geometry.dispose();
@@ -1190,7 +1232,9 @@
                 draggableObjects.splice(index, 1);
             }
             
-            setupDragControls();
+            if (wasLight) {
+                updateLightSelector(); // Atualiza o dropdown
+            }
         }
 
         
@@ -1199,6 +1243,7 @@
             mouse.y = -(clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
 
+            // Intersecta apenas objetos visíveis (luzes são mesh.visible = false, então são ignoradas)
             const intersects = raycaster.intersectObjects([...draggableObjects, groundPlane], true); 
             
             const objectIntersect = intersects.find(intersect => intersect.object.name !== "ground");
@@ -1389,17 +1434,21 @@
                 while (intersectedObject.parent && !draggableObjects.includes(intersectedObject)) {
                     intersectedObject = intersectedObject.parent;
                 }
+                // Como as luzes são invisíveis (material), getIntersectedObject NUNCA as encontrará.
                 if (!draggableObjects.includes(intersectedObject)) {
                      intersectedObject = null;
                 }
             }
             
+            if (intersectedObject) {
+                dragObject = intersectedObject;
+                if (orbitControls) orbitControls.enabled = false;
+            } else {
+                dragObject = null;
+            }
+
             clickTimer = setTimeout(() => {
                 isDragging = true;
-                if (selectedObject === null && intersectedObject) {
-                    dragObject = intersectedObject;
-                    if (orbitControls) orbitControls.enabled = false;
-                }
             }, clickThreshold);
         }
         
@@ -1410,38 +1459,28 @@
             clearTimeout(clickTimer);
             
             if (isDragging) {
-                isDragging = false;
-                dragObject = null;
-                if (orbitControls) orbitControls.enabled = true;
+                // Foi um arraste (drag)
             } else {
-                if (transformControls.dragging) return;
-                
-                const intersect = getIntersectedObject(event.clientX, event.clientY);
-                if (intersect) {
-                    let clickedObject = intersect.object;
+                // Foi um clique (click)
+                if (!document.body.classList.contains('immersive-mode')) {
+                    if (transformControls.dragging) return;
                     
-                    if (clickedObject.name === "ground") {
-                        setSelectedObject(null);
-                        return;
-                    }
-                    
-                    while (clickedObject.parent && !draggableObjects.includes(clickedObject)) {
-                        clickedObject = clickedObject.parent;
-                    }
-
-                    if (draggableObjects.includes(clickedObject)) {
-                        setSelectedObject(clickedObject);
+                    if (dragObject) { // dragObject é o objeto clicável (não-luz)
+                        setSelectedObject(dragObject);
                     } else {
+                        // Clicou no chão, deseleciona tudo
                         setSelectedObject(null);
                     }
-                } else {
-                    setSelectedObject(null);
                 }
             }
+            
+            isDragging = false;
+            dragObject = null;
+            if (orbitControls) orbitControls.enabled = true;
         }
         
         function onMouseMove(event) {
-            if (isDragging && dragObject) {
+            if (isDragging && dragObject) { // dragObject NUNCA será uma luz
                 mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
                 mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
                 raycaster.setFromCamera(mouse, camera);
@@ -1479,14 +1518,11 @@
 
                         dragObject.position.y = topY + objectBaseOffset;
                     }
-                    
-                    if (dragObject.userData.type === 'point_light') {
-                         dragObject.position.y = targetIntersect.point.y + 1.0;
-                    }
                 }
             }
         }
 
+        // --- NOVO: Função de seleção atualizada ---
         function setSelectedObject(object) {
             if (selectedObject === object) return;
             
@@ -1494,9 +1530,50 @@
 
             if (selectedObject) {
                 transformControls.attach(selectedObject);
-                transformControls.setMode('translate'); 
+                transformControls.setMode('translate');
+                
+                // Atualiza o dropdown
+                if (selectedObject.userData.type === 'point_light') {
+                    // Garante que o dropdown mostre o item certo
+                    if (lightSelect.value !== selectedObject.uuid) {
+                        lightSelect.value = selectedObject.uuid;
+                    }
+                } else {
+                    // Se selecionamos um cubo, reseta o dropdown
+                    lightSelect.value = 'none';
+                }
+
             } else {
                 transformControls.detach();
+                lightSelect.value = 'none'; // Deseleciona no dropdown
+            }
+        }
+        
+        // --- NOVO: Função para atualizar o seletor de luz ---
+        function updateLightSelector() {
+            const selectedId = selectedObject ? selectedObject.uuid : null;
+            
+            while (lightSelect.options.length > 1) {
+                lightSelect.remove(1);
+            }
+
+            let lightCount = 1;
+            draggableObjects.forEach(obj => {
+                if (obj.userData.type === 'point_light') {
+                    if (!obj.userData.name) {
+                        obj.userData.name = `Luz ${lightCount++}`;
+                    }
+                    const option = document.createElement('option');
+                    option.value = obj.uuid;
+                    option.textContent = obj.userData.name;
+                    lightSelect.appendChild(option);
+                }
+            });
+
+            if (selectedId && draggableObjects.some(o => o.uuid === selectedId && o.userData.type === 'point_light')) {
+                lightSelect.value = selectedId;
+            } else {
+                lightSelect.value = 'none';
             }
         }
         
@@ -1527,13 +1604,19 @@
 
         function onKeyDown(event) {
             const targetNode = event.target.tagName.toLowerCase();
-            if (targetNode === 'input' || targetNode === 'textarea') return;
+            if (targetNode === 'input' || targetNode === 'textarea' || targetNode === 'select') return; // Adicionado 'select'
 
-            // --- NOVOS ATALHOS GLOBAIS ---
+            // --- ATALHOS GLOBAIS ---
             
             // Atalho 'H' para Modo Imersivo (Ocultar UI)
             if (event.key === 'h' || event.key === 'H') {
                 document.body.classList.toggle('immersive-mode');
+                
+                // Se entramos no modo imersivo, deseleciona qualquer objeto para esconder o gizmo
+                if (document.body.classList.contains('immersive-mode')) {
+                    setSelectedObject(null);
+                }
+                
                 event.preventDefault();
                 return; // Sai da função
             }
@@ -1549,7 +1632,7 @@
                 return; // Sai da função
             }
 
-            // --- FIM DOS NOVOS ATALHOS ---
+            // --- FIM DOS ATALHOS GLOBAIS ---
 
 
             if (cameraMode === 'explore' && pointerLockControls && pointerLockControls.isLocked) {
@@ -1594,6 +1677,18 @@
                     }
                     event.preventDefault();
                 }
+                // Permite rotação para luzes (para mudar a sombra)
+                if (selectedObject && selectedObject.userData.type === 'point_light') {
+                     switch (transformControls.mode) {
+                        case 'translate':
+                            transformControls.setMode('rotate');
+                            break;
+                        case 'rotate':
+                             transformControls.setMode('translate');
+                            break;
+                    }
+                    event.preventDefault();
+                }
                 return;
             }
 
@@ -1633,7 +1728,7 @@
                     positionChanged = true;
                     break;
                 case 'PageDown':
-                    const minY = getRequiredHeightForGround(selectedObject);
+                    const minY = (selectedObject.userData.type === 'point_light') ? 0.1 : getRequiredHeightForGround(selectedObject);
                     const targetY = selectedObject.position.y - moveIncrement;
                     selectedObject.position.y = Math.max(minY, targetY);
                     positionChanged = true;
