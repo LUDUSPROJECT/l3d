@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VTT 3D Local</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/lucide-react/0.395.0/lucide.min.js" rel="stylesheet">
+    <!-- Script para os ícones do Lucide (URL CORRIGIDA) -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <style>
         body, html {
             margin: 0;
@@ -21,56 +22,103 @@
             width: 100%;
             height: 100%;
         }
-        #uiPanel {
+        
+        /* --- NOVA UI DE ÍCONES --- */
+        #iconToolbar {
             position: fixed;
-            top: 10px;
+            top: 50%;
             left: 10px;
+            transform: translateY(-50%);
             background: rgba(26, 26, 26, 0.9);
             color: #f0f0f0;
             border-radius: 12px;
-            padding: 16px;
-            width: 300px;
-            max-height: calc(100vh - 20px);
-            overflow-y: auto;
+            padding: 12px 8px;
             border: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-            transition: transform 0.3s ease-in-out;
-        }
-        #uiPanel.hidden {
-            transform: translateX(-320px);
-        }
-        #toggleUiBtn {
-            position: fixed;
-            top: 10px;
-            left: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
             z-index: 1001;
-            background: rgba(40, 40, 40, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white;
+        }
+        
+        .toolbar-icon {
+            position: relative;
             padding: 8px;
             border-radius: 8px;
             cursor: pointer;
-            transition: all 0.3s ease-in-out;
+            color: #d4d4d8;
+            transition: all 0.2s ease;
         }
-        #uiPanel:not(.hidden) + #toggleUiBtn {
-            left: 320px; /* Posição quando o painel está visível */
+        .toolbar-icon:hover {
+            background-color: #3f3f46;
+            color: white;
         }
-        .control-group {
-            margin-bottom: 16px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        .toolbar-icon.active {
+             background-color: #52525b;
+             color: #a7f3d0;
         }
-        .control-group:last-of-type {
-            border-bottom: none;
-            margin-bottom: 0;
+
+        /* Tooltip */
+        .toolbar-icon[data-tooltip]:before {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 52px; /* Posição à direita do ícone */
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 6px 10px;
+            background: #2727a; 
+            color: white;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            white-space: nowrap;
+            display: none;
+            z-index: 1002;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        h3 {
+        .toolbar-icon[data-tooltip]:hover:before {
+            display: block;
+        }
+        
+        /* Painel Contextual */
+        #contextualPanelContainer {
+            position: fixed;
+            top: 50%;
+            left: 68px; /* Ao lado da barra de ícones */
+            transform: translateY(-50%);
+            z-index: 1000;
+            width: 280px;
+            background: rgba(30, 30, 30, 0.9);
+            color: #f0f0f0;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        #panelContent h3 {
             font-size: 1rem;
             font-weight: 600;
             margin-bottom: 12px;
             color: #a7f3d0; /* Verde menta */
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
-        button, .file-label {
+
+        /* NOVO: Sub-título para painel de iluminação */
+        #panelContent h4 {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #d4d4d8;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 8px;
+        }
+        
+        #panelContent button, #panelContent .file-label {
             display: flex;
             align-items: center;
             justify-content: center;
@@ -86,10 +134,11 @@
             margin-top: 8px;
             transition: background-color 0.2s;
         }
-        button:hover, .file-label:hover {
+        #panelContent button:hover, #panelContent .file-label:hover {
             background-color: #52525b; /* Cinza-zinco 600 */
         }
-        select {
+        
+        #panelContent select {
             width: 100%;
             padding: 10px;
             background-color: #3f3f46;
@@ -100,40 +149,48 @@
             font-weight: 500;
             margin-top: 8px;
         }
-        input[type="color"] {
+        
+        #panelContent input[type="color"] {
             width: 100%;
             height: 40px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             padding: 0;
+            margin-top: 8px;
         }
-        input[type="range"] {
+        #panelContent input[type="range"] {
             width: 100%;
         }
-        .slider-group {
+        
+        #panelContent .slider-group {
             display: flex;
             flex-direction: column;
             gap: 4px;
             margin-top: 8px;
         }
-        .slider-label {
+        #panelContent .slider-label {
             display: flex;
             justify-content: space-between;
             font-size: 0.875rem;
             color: #d4d4d8;
             margin-top: 8px;
         }
-        .checkbox-group {
+        
+        #panelContent .checkbox-group {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-top: 8px;
+            margin-top: 12px;
         }
-        
+
+        .hidden {
+            display: none !important;
+        }
+
         /* CSS para Modo Imersivo */
-        body.immersive-mode #uiPanel,
-        body.immersive-mode #toggleUiBtn {
+        body.immersive-mode #iconToolbar,
+        body.immersive-mode #contextualPanelContainer {
             display: none;
         }
     </style>
@@ -152,7 +209,19 @@
                 "three/postprocessing/RenderPass": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/postprocessing/RenderPass.js",
                 "three/shaders/BokehShader": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/shaders/BokehShader.js",
                 "three/postprocessing/BokehPass": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/postprocessing/BokehPass.js",
-                "three/postprocessing/OutputPass": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/postprocessing/OutputPass.js"
+                "three/postprocessing/OutputPass": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/postprocessing/OutputPass.js",
+                
+                "three/postprocessing/UnrealBloomPass": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/postprocessing/UnrealBloomPass.js",
+                "three/postprocessing/ShaderPass": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/postprocessing/ShaderPass.js",
+                "three/shaders/LuminosityHighPassShader": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/shaders/LuminosityHighPassShader.js",
+                "three/shaders/CopyShader": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/shaders/CopyShader.js",
+                "three/shaders/VignetteShader": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/shaders/VignetteShader.js",
+                "three/shaders/ColorCorrectionShader": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/shaders/ColorCorrectionShader.js",
+                
+                "three/postprocessing/SMAAPass": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/postprocessing/SMAAPass.js",
+                
+                "three/postprocessing/OutlinePass": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/postprocessing/OutlinePass.js",
+                "three/shaders/FXAAShader": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/shaders/FXAAShader.js"
             }
         }
     </script>
@@ -161,146 +230,50 @@
 
     <div id="canvasContainer"></div>
 
-    <div id="uiPanel">
-        <div class="control-group">
-            <h3>Cena</h3>
-            <label for="loadSceneInput" class="file-label">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                Carregar Cena (.json)
-            </label>
-            <input type="file" id="loadSceneInput" accept=".json" class="hidden">
-            <button id="saveSceneBtn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                Salvar Cena (.json)
-            </button>
-
-            <label for="skyboxSelect" class="slider-label">Céu e Iluminação</label>
-            <select id="skyboxSelect">
-                <option value="default">Padrão (Escuro)</option>
-                <option value="day">Dia (Parque)</option>
-                <option value="sunset">Pôr do Sol (Ponte)</option>
-                <option value="night">Noite (Via Láctea)</option>
-                <!-- Opções customizadas serão adicionadas aqui via JS -->
-            </select>
-            
-            <label for="loadSkyboxInput" class="file-label">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.2 15c.7-1.2 1-2.5.7-3.9-.6-2.4-2.4-4.2-4.8-4.8-1.4-.3-2.7-.1-3.9.7L12 8l-1.2-1.1c-1.2-.7-2.5-1-3.9-.7-2.4.6-4.2 2.4-4.8 4.8-.3 1.4-.1 2.7.7 3.9L4 16.5 12 22l8-5.5-1.2-1.5z"></path></svg>
-                Carregar Céu Customizado (360)
-            </label>
-            <input type="file" id="loadSkyboxInput" accept="image/png, image/jpeg" class="hidden">
+    <!-- Nova Barra de Ícones -->
+    <div id="iconToolbar">
+        <div class="toolbar-icon" data-tooltip="Cena (Salvar/Carregar)" id="panelBtn-scene">
+            <i data-lucide="save"></i>
         </div>
-
-        <!-- Controles do Chão -->
-        <div class="control-group">
-            <h3>Propriedades do Chão</h3>
-            <div class="slider-group">
-                <label for="groundRoughnessSlider" class="slider-label">
-                    <span>Rugosidade (Espelho)</span>
-                    <span id="groundRoughnessValue">0.8</span>
-                </label>
-                <input type="range" id="groundRoughnessSlider" min="0" max="1" value="0.8" step="0.01">
-            </div>
-            <div class="slider-group">
-                <label for="groundMetalnessSlider" class="slider-label">
-                    <span>Metalicidade (Reflexo)</span>
-                    <span id="groundMetalnessValue">0.2</span>
-                </label>
-                <input type="range" id="groundMetalnessSlider" min="0" max="1" value="0.2" step="0.01">
-            </div>
+        <div class="toolbar-icon" data-tooltip="Tokens (Adicionar)" id="panelBtn-tokens">
+            <i data-lucide="box"></i>
         </div>
-
-        <div class="control-group">
-            <h3>Tokens</h3>
-            <button id="addCubeBtn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
-                Adicionar Cubo
-            </button>
-            <button id="addSphereBtn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>
-                Adicionar Esfera
-            </button>
-
-            <label for="loadImageInput" class="file-label">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                Carregar Token Imagem
-            </label>
-            <input type="file" id="loadImageInput" accept="image/png, image/jpeg" class="hidden">
-
-            <label for="loadModelInput" class="file-label">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m20 18-5-5-5 5-5-5"></path><path d="m4 8 5 5 5-5 5 5"></path></svg>
-                Carregar Modelo (.glb)
-            </label>
-            <input type="file" id="loadModelInput" accept=".glb" class="hidden">
+        <div class="toolbar-icon" data-tooltip="Luzes" id="panelBtn-lights">
+            <i data-lucide="sun"></i>
         </div>
-
-        <div class="control-group">
-            <h3>Luzes</h3>
-            <input type="color" id="lightColorInput" value="#ffffff">
-            <button id="addLightBtn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path><path d="M12 3v1"></path><path d="M20.66 7 20 7.66"></path><path d="M21 12h-1"></path><path d="M20 16.34 20.66 17"></path><path d="M12 21v-1"></path><path d="M7.66 20 7 20.66"></path><path d="M3 12h1"></path><path d="M4 7.66 3.34 7"></path></svg>
-                Adicionar Luz
-            </button>
-            
-            <!-- NOVO SELETOR DE LUZ -->
-            <label for="lightSelect" class="slider-label">Selecionar Luz</label>
-            <select id="lightSelect">
-                <option value="none">Nenhuma</option>
-                <!-- Luzes adicionadas aqui via JS -->
-            </select>
+        <div class="toolbar-icon" data-tooltip="Chão" id="panelBtn-ground">
+            <i data-lucide="square"></i>
+        </div>
+        <!-- BOTÃO DO CÉU ATUALIZADO -->
+        <div class="toolbar-icon" data-tooltip="Iluminação Global (Céu/Sol)" id="panelBtn-world">
+            <i data-lucide="cloud"></i>
+        </div>
+        <div class="toolbar-icon" data-tooltip="Câmera (Filtros)" id="panelBtn-camera">
+            <i data-lucide="camera"></i>
         </div>
         
-        <div class="control-group">
-            <h3>Câmera (Filtros)</h3>
-            <div class="slider-group">
-                <label for="fovSlider" class="slider-label">
-                    <span>Campo de Visão (FOV)</span>
-                    <span id="fovValue">60</span>
-                </label>
-                <input type="range" id="fovSlider" min="20" max="120" value="60">
-            </div>
-            
-            <div class="checkbox-group">
-                <input type="checkbox" id="dofToggle">
-                <label for="dofToggle">Profundidade de Campo (DOF)</label>
-            </div>
-            
-            <div id="dofFocusControls" class="slider-group hidden">
-                <label for="dofFocusSlider" class="slider-label">
-                    <span>Distância Foco</span>
-                    <span id="dofFocusValue">20.0</span>
-                </label>
-                <input type="range" id="dofFocusSlider" min="1" max="100" value="20" step="0.1">
-            </div>
-            
-            <div id="dofApertureControls" class="slider-group hidden">
-                <label for="dofApertureSlider" class="slider-label">
-                    <span>Abertura (Desfoque)</span>
-                    <span id="dofApertureValue">5.0</span>
-                </label>
-                <input type="range" id="dofApertureSlider" min="0" max="20" value="5" step="0.1">
-            </div>
+        <div class="flex-grow"></div> <!-- Espaçador -->
+        
+        <div class="toolbar-icon" data-tooltip="Modo Câmera (C)" id="cameraModeBtn">
+            <i data-lucide="orbit" id="cameraModeIcon"></i>
         </div>
-
-        <!-- MODO DE CÂMERA -->
-        <div class="control-group">
-            <h3>Modo de Câmera (Atalho: C)</h3>
-            <button id="cameraModeBtn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 19l-2-2-2 2"></path><path d="M7 21v-4"></path><path d="M7 13A6 6 0 0 0 7 1a6 6 0 0 0 0 12z"></path><path d="M15 13a6 6 0 0 0 0-12 6 6 0 0 0-1 3.5"></path></svg>
-                Modo: Orbitar
-            </button>
-            <p id="cameraHelpText" class="text-xs text-gray-400 mt-2 hidden">
-                Modo Explorar: Use WASD para mover, Espaço/Shift para subir/descer, e o Mouse para olhar. Clique na cena para travar. (Aperte ESC para destravar)
-            </p>
+        <div class="toolbar-icon" data-tooltip="Modo Imersivo (H)" id="immersiveModeBtn">
+            <i data-lucide="minimize-2"></i>
+        </div>
+    </div>
+    
+    <!-- Novo Painel Contextual -->
+    <div id="contextualPanelContainer" class="hidden">
+        <div id="panelContent">
+            <!-- Conteúdo será injetado aqui via JS -->
         </div>
     </div>
 
-    <!-- Botão de Toggle da UI -->
-    <button id="toggleUiBtn">
-        <!-- Ícone de Menu (Hamburguer) -->
-        <svg id="menuIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-        <!-- Ícone de Fechar (X) -->
-        <svg id="closeIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-    </button>
+    <!-- Inputs de Arquivo Globais (ocultos) -->
+    <input type="file" id="loadSceneInput" accept=".json" class="hidden">
+    <input type="file" id="loadSkyboxInput" accept="image/png, image/jpeg" class="hidden">
+    <input type="file" id="loadImageInput" accept="image/png, image/jpeg" class="hidden">
+    <input type="file" id="loadModelInput" accept=".glb" class="hidden">
 
 
     <script type="module">
@@ -313,60 +286,46 @@
         import { RenderPass } from 'three/postprocessing/RenderPass';
         import { BokehPass } from 'three/postprocessing/BokehPass';
         import { OutputPass } from 'three/postprocessing/OutputPass';
+        
+        // NOVOS IMPORTS
+        import { UnrealBloomPass } from 'three/postprocessing/UnrealBloomPass';
+        import { ShaderPass } from 'three/postprocessing/ShaderPass';
+        import { VignetteShader } from 'three/shaders/VignetteShader';
+        import { ColorCorrectionShader } from 'three/shaders/ColorCorrectionShader';
+        import { SMAAPass } from 'three/postprocessing/SMAAPass'; 
+        
+        // NOVO: IMPORTS DO OUTLINE
+        import { OutlinePass } from 'three/postprocessing/OutlinePass';
+        import { FXAAShader } from 'three/shaders/FXAAShader'; // Dependência do OutlinePass
+
 
         let scene, camera, renderer, orbitControls, transformControls;
-        let groundPlane, ambientLight, sunLight;
+        let groundPlane, gridHelper, ambientLight, sunLight; // gridHelper agora é global
         const canvasContainer = document.getElementById('canvasContainer');
         
         // Controles de Câmera FPS
         let pointerLockControls = null;
-        let cameraMode = 'orbit'; 
+        let cameraMode = 'orbit'; // 'orbit', 'explore', 'cinematic'
         let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, moveUp = false, moveDown = false;
         const velocity = new THREE.Vector3();
         const direction = new THREE.Vector3();
         const clock = new THREE.Clock(); 
 
-        // Botões da UI
-        const addCubeBtn = document.getElementById('addCubeBtn');
-        const addSphereBtn = document.getElementById('addSphereBtn');
-        const addLightBtn = document.getElementById('addLightBtn');
-        const lightColorInput = document.getElementById('lightColorInput');
+        // --- NOVA UI ---
+        const iconToolbar = document.getElementById('iconToolbar');
+        const panelContainer = document.getElementById('contextualPanelContainer');
+        const panelContent = document.getElementById('panelContent');
+        const panelButtons = document.querySelectorAll('.toolbar-icon[id^="panelBtn-"]');
+        const cameraModeBtn = document.getElementById('cameraModeBtn');
+        const cameraModeIcon = document.getElementById('cameraModeIcon');
+        const immersiveModeBtn = document.getElementById('immersiveModeBtn');
+        let currentOpenPanel = null;
+        
+        // Inputs de arquivo (agora globais)
+        const loadSceneInput = document.getElementById('loadSceneInput');
+        const loadSkyboxInput = document.getElementById('loadSkyboxInput');
         const loadImageInput = document.getElementById('loadImageInput');
         const loadModelInput = document.getElementById('loadModelInput');
-        const toggleUiBtn = document.getElementById('toggleUiBtn');
-        const uiPanel = document.getElementById('uiPanel');
-        const menuIcon = document.getElementById('menuIcon');
-        const closeIcon = document.getElementById('closeIcon');
-        
-        // Controles de Câmera (Filtros)
-        const fovSlider = document.getElementById('fovSlider');
-        const fovValue = document.getElementById('fovValue');
-        const dofToggle = document.getElementById('dofToggle');
-        const dofFocusSlider = document.getElementById('dofFocusSlider');
-        const dofFocusValue = document.getElementById('dofFocusValue');
-        const dofApertureSlider = document.getElementById('dofApertureSlider');
-        const dofApertureValue = document.getElementById('dofApertureValue');
-        const dofFocusControls = document.getElementById('dofFocusControls');
-        const dofApertureControls = document.getElementById('dofApertureControls');
-        
-        // Botão de Modo Câmera
-        const cameraModeBtn = document.getElementById('cameraModeBtn');
-        const cameraHelpText = document.getElementById('cameraHelpText');
-        
-        // Salvar/Carregar Cena
-        const saveSceneBtn = document.getElementById('saveSceneBtn');
-        const loadSceneInput = document.getElementById('loadSceneInput');
-        const skyboxSelect = document.getElementById('skyboxSelect');
-        const loadSkyboxInput = document.getElementById('loadSkyboxInput'); 
-        
-        // Controles do Chão
-        const groundRoughnessSlider = document.getElementById('groundRoughnessSlider');
-        const groundRoughnessValue = document.getElementById('groundRoughnessValue');
-        const groundMetalnessSlider = document.getElementById('groundMetalnessSlider');
-        const groundMetalnessValue = document.getElementById('groundMetalnessValue');
-        
-        // NOVO: Seletor de Luz
-        const lightSelect = document.getElementById('lightSelect');
         
         // Armazenamento de Recursos Carregados
         const loadedResources = new Map();
@@ -377,7 +336,8 @@
         let selectedObject = null;
 
         // Pós-processamento
-        let composer, bokehPass, renderPass;
+        let composer, bokehPass, renderPass, bloomPass, vignettePass, colorCorrectionPass, smaaPass; 
+        let outlinePass; // NOVO: Outline Pass
 
         // Lógica de Clique vs Arraste
         let clickTimer = null;
@@ -386,9 +346,27 @@
         let dragObject = null;
 
         let customSkyboxResourceName = null;
+        
+        // Variáveis de estado da UI (para recriar painéis)
+        let lightSelectState = 'none';
+        
+        // NOVO: Variável de estado do ângulo do sol
+        let sunAngle = 45; 
 
-        init();
-        animate();
+        window.onload = () => {
+            init();
+            animate();
+            
+            try {
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                } else {
+                    console.error("Lucide library not loaded by window.onload.");
+                }
+            } catch (err) {
+                console.error("Error creating lucide icons:", err);
+            }
+        };
 
         function init() {
             // Cena
@@ -399,7 +377,7 @@
             camera.position.set(15, 20, 25); 
 
             // Renderizador
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer = new THREE.WebGLRenderer({ antialias: true }); // AA Padrão (necessário)
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -413,7 +391,7 @@
             ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
             scene.add(ambientLight);
             sunLight = new THREE.DirectionalLight(0xffffff, 2.0);
-            sunLight.position.set(20, 30, 20);
+            // sunLight.position.set(20, 30, 20); // Removido, agora controlado por updateSunPosition
             sunLight.castShadow = true;
             sunLight.shadow.mapSize.width = 2048;
             sunLight.shadow.mapSize.height = 2048;
@@ -427,7 +405,7 @@
             sunLight.shadow.normalBias = 0.05;
             scene.add(sunLight);
             
-            loadSkybox('default');
+            loadSkybox('default'); // Isso agora também define a posição/ângulo do sol
 
             // Chão
             groundPlane = new THREE.Mesh(
@@ -444,26 +422,18 @@
             groundPlane.name = "ground";
             scene.add(groundPlane);
 
-            // Grid
-            const gridHelper = new THREE.GridHelper(100, 100, 0x888888, 0x888888);
+            // Grid (agora global)
+            gridHelper = new THREE.GridHelper(100, 100, 0x888888, 0x888888);
             gridHelper.position.y = 0.01;
             scene.add(gridHelper);
 
             // Controles da Câmera (Órbita)
             createOrbitControls();
             
-            canvasContainer.addEventListener('click', () => {
-                if (cameraMode === 'explore' && pointerLockControls && !pointerLockControls.isLocked) {
-                    pointerLockControls.lock();
-                }
-            });
-
             // Controles de Transformação (Gizmo)
             transformControls = new TransformControls(camera, renderer.domElement);
             transformControls.addEventListener('dragging-changed', (event) => {
-                // *** CORREÇÃO 2: Desabilita a câmera ao arrastar o gizmo ***
                 if (orbitControls) orbitControls.enabled = !event.value;
-                
                 if (selectedObject) {
                     selectedObject.userData.isGizmoDragging = event.value;
                 }
@@ -474,11 +444,10 @@
                     if (selectedObject.position.y < minY && selectedObject.userData.type !== 'model_glb') {
                          selectedObject.position.y = minY;
                     } else if (selectedObject.userData.type === 'model_glb') {
-                        // Lógica de GLB para base
                         const box = new THREE.Box3().setFromObject(selectedObject);
                         const currentBaseY = box.min.y;
                         if(currentBaseY < 0) {
-                            selectedObject.position.y -= currentBaseY; // Empurra para cima
+                            selectedObject.position.y -= currentBaseY;
                         }
                     }
                 }
@@ -488,12 +457,6 @@
 
             // Listeners de eventos
             window.addEventListener('resize', onWindowResize);
-            addCubeBtn.addEventListener('click', () => addNewToken('cube'));
-            addSphereBtn.addEventListener('click', () => addNewToken('sphere'));
-            addLightBtn.addEventListener('click', () => {
-                const color = lightColorInput.value;
-                addNewToken('point_light', { color: color });
-            });
             
             canvasContainer.addEventListener('mousedown', onMouseDown, false); 
             canvasContainer.addEventListener('mouseup', onMouseUp, false); 
@@ -502,68 +465,377 @@
             window.addEventListener('keydown', onKeyDown, false); 
             window.addEventListener('keyup', onKeyUp, false);
 
-            // UI
-            toggleUiBtn.addEventListener('click', () => {
-                uiPanel.classList.toggle('hidden');
-                menuIcon.classList.toggle('hidden');
-                closeIcon.classList.toggle('hidden');
-                toggleUiBtn.style.left = uiPanel.classList.contains('hidden') ? '10px' : '320px';
+            // --- NOVA UI ---
+            panelButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const panelName = btn.id.split('-')[1];
+                    
+                    if (currentOpenPanel === panelName) {
+                        closeContextualPanel();
+                    } else {
+                        openContextualPanel(panelName, btn);
+                    }
+                    e.stopPropagation();
+                });
             });
             
-            // Controles de Câmera
-            setupCameraControls();
-            
-            // Botão de Modo Câmera (REFATORADO)
-            cameraModeBtn.addEventListener('click', toggleCameraMode);
-            
-            // Salvar/Carregar
-            saveSceneBtn.addEventListener('click', saveScene);
-            loadSceneInput.addEventListener('change', loadScene);
-            skyboxSelect.addEventListener('change', (e) => {
-                if (e.target.value === 'custom') {
-                    if (customSkyboxResourceName) {
-                        const dataURL = loadedResources.get(customSkyboxResourceName);
-                        if (dataURL) {
-                            loadSkybox('custom', dataURL);
-                        } else {
-                            handleLoadCustomSkybox(); 
-                        }
-                    } else {
-                        handleLoadCustomSkybox();
-                    }
-                } else {
-                    loadSkybox(e.target.value);
+            document.addEventListener('click', (e) => {
+                if (!panelContainer.classList.contains('hidden') && !panelContainer.contains(e.target)) {
+                    closeContextualPanel();
                 }
             });
-            
-            // Listeners dos sliders do Chão
-            groundRoughnessSlider.addEventListener('input', (e) => {
-                const value = parseFloat(e.target.value);
-                groundPlane.material.roughness = value;
-                groundRoughnessValue.textContent = value.toFixed(2);
-            });
-            groundMetalnessSlider.addEventListener('input', (e) => {
-                const value = parseFloat(e.target.value);
-                groundPlane.material.metalness = value;
-                groundMetalnessValue.textContent = value.toFixed(2);
-            });
+
+            cameraModeBtn.addEventListener('click', toggleCameraMode);
+            immersiveModeBtn.addEventListener('click', toggleImmersiveMode);
             
             // Inputs de Arquivo
-            setupFileInputs();
-            
-            // NOVO: Listener do Seletor de Luz
-            lightSelect.addEventListener('change', () => {
-                const selectedId = lightSelect.value;
-                if (selectedId === 'none') {
-                    setSelectedObject(null);
-                } else {
-                    const lightObject = draggableObjects.find(o => o.uuid === selectedId);
-                    if (lightObject) {
-                        setSelectedObject(lightObject);
-                    }
-                }
-            });
+            loadSceneInput.addEventListener('change', loadScene);
+            loadSkyboxInput.addEventListener('change', handleLoadCustomSkybox);
+            loadImageInput.addEventListener('change', (e) => handleFileToken(e, 'image_sprite'));
+            loadModelInput.addEventListener('change', (e) => handleFileToken(e, 'model_glb'));
         }
+        
+        // --- FUNÇÕES DA NOVA UI ---
+        
+        function closeContextualPanel() {
+            panelContainer.classList.add('hidden');
+            currentOpenPanel = null;
+            panelButtons.forEach(b => b.classList.remove('active'));
+        }
+        
+        function openContextualPanel(panelName, btnElement) {
+            panelContainer.classList.remove('hidden');
+            panelContent.innerHTML = ''; 
+            currentOpenPanel = panelName;
+            
+            panelButtons.forEach(b => b.classList.remove('active'));
+            if (btnElement) btnElement.classList.add('active');
+
+            switch (panelName) {
+                case 'scene':
+                    panelContent.innerHTML = `
+                        <h3>Cena</h3>
+                        <label for="loadSceneInput" class="file-label">
+                            <i data-lucide="upload" class="w-4 h-4"></i> Carregar Cena (.json)
+                        </label>
+                        <button id="saveSceneBtn">
+                            <i data-lucide="save" class="w-4 h-4"></i> Salvar Cena (.json)
+                        </button>`;
+                    document.getElementById('saveSceneBtn').addEventListener('click', saveScene);
+                    break;
+                    
+                case 'tokens':
+                    panelContent.innerHTML = `
+                        <h3>Tokens</h3>
+                        <button id="addCubeBtn">
+                            <i data-lucide="cube" class="w-4 h-4"></i> Adicionar Cubo
+                        </button>
+                        <button id="addSphereBtn">
+                            <i data-lucide="circle" class="w-4 h-4"></i> Adicionar Esfera
+                        </button>
+                        <label for="loadImageInput" class="file-label">
+                            <i data-lucide="image" class="w-4 h-4"></i> Carregar Token Imagem
+                        </label>
+                        <label for="loadModelInput" class="file-label">
+                            <i data-lucide="box" class="w-4 h-4"></i> Carregar Modelo (.glb)
+                        </label>`;
+                    document.getElementById('addCubeBtn').addEventListener('click', () => addNewToken('cube'));
+                    document.getElementById('addSphereBtn').addEventListener('click', () => addNewToken('sphere'));
+                    break;
+
+                case 'lights':
+                    panelContent.innerHTML = `
+                        <h3>Luzes Locais</h3>
+                        <input type="color" id="lightColorInput" value="#ffffff">
+                        <button id="addLightBtn">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Luz de Ponto
+                        </button>
+                        <label for="lightSelect" class="slider-label">Selecionar Luz</label>
+                        <select id="lightSelect">
+                            <option value="none">Nenhuma</option>
+                        </select>`;
+                    document.getElementById('addLightBtn').addEventListener('click', () => {
+                        const color = document.getElementById('lightColorInput').value;
+                        addNewToken('point_light', { color: color });
+                    });
+                    
+                    const lightSelect = document.getElementById('lightSelect');
+                    lightSelect.addEventListener('change', () => {
+                        const selectedId = lightSelect.value;
+                        lightSelectState = selectedId; 
+                        if (selectedId === 'none') {
+                            setSelectedObject(null);
+                        } else {
+                            const lightObject = draggableObjects.find(o => o.uuid === selectedId);
+                            if (lightObject) {
+                                setSelectedObject(lightObject);
+                            }
+                        }
+                    });
+                    
+                    updateLightSelector(); 
+                    break;
+                    
+                // PAINEL DO CHÃO ATUALIZADO
+                case 'ground':
+                    const roughness = (groundPlane.material.roughness * 100).toFixed(0);
+                    const metalness = (groundPlane.material.metalness * 100).toFixed(0);
+                    const gridVisible = gridHelper.visible;
+                    
+                    panelContent.innerHTML = `
+                        <h3>Propriedades do Chão</h3>
+                        <div class="slider-group">
+                            <label class="slider-label"><span>Rugosidade</span><span id="groundRoughnessValue">${roughness}%</span></label>
+                            <input type="range" id="groundRoughnessSlider" min="0" max="100" value="${roughness}">
+                        </div>
+                        <div class="slider-group">
+                            <label class="slider-label"><span>Metalicidade</span><span id="groundMetalnessValue">${metalness}%</span></label>
+                            <input type="range" id="groundMetalnessSlider" min="0" max="100" value="${metalness}">
+                        </div>
+                        
+                        <div class="checkbox-group" style="margin-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
+                            <input type="checkbox" id="gridToggle" ${gridVisible ? 'checked' : ''}>
+                            <label for="gridToggle">Mostrar Grid</label>
+                        </div>
+                        `;
+                    
+                    // Chama a nova função para configurar os listeners
+                    setupGroundControls();
+                    break;
+
+                // CASO DO CÉU ATUALIZADO
+                case 'world':
+                    const sunIntensity = sunLight.intensity.toFixed(1);
+                    const sunColor = '#' + sunLight.color.getHexString();
+                    const ambientIntensity = ambientLight.intensity.toFixed(2);
+                    const sunAngleValue = sunAngle;
+                
+                    panelContent.innerHTML = `
+                        <h3>Iluminação Global</h3>
+                        
+                        <h4>Céu (Skybox)</h4>
+                        <select id="skyboxSelect">
+                            <option value="default">Padrão (Escuro)</option>
+                            <option value="day">Dia (Parque)</option>
+                            <option value="sunset">Pôr do Sol (Ponte)</option>
+                            <option value="night">Noite (Via Láctea)</option>
+                        </select>
+                        <label for="loadSkyboxInput" class="file-label">
+                            <i data-lucide="image-up" class="w-4 h-4"></i> Carregar Céu (360)
+                        </label>
+                        
+                        <h4>Iluminação (Presets)</h4>
+                        <button id="applyNightModeBtn">
+                            <i data-lucide="moon" class="w-4 h-4"></i> Aplicar Iluminação Noturna
+                        </button>
+                        
+                        <h4>Iluminação (Manual)</h4>
+                        <div class="slider-group">
+                            <label class="slider-label"><span>Intensidade (Sol)</span><span id="sunIntensityValue">${sunIntensity}</span></label>
+                            <input type="range" id="sunIntensitySlider" min="0" max="10" value="${sunIntensity}" step="0.1">
+                        </div>
+                        <div class="slider-group">
+                            <label class="slider-label"><span>Ângulo do Sol</span><span id="sunAngleValue">${sunAngleValue}°</span></label>
+                            <input type="range" id="sunAngleSlider" min="0" max="360" value="${sunAngleValue}" step="1">
+                        </div>
+                        <label class="slider-label" style="margin-top: 4px;">Cor do Sol</label>
+                        <input type="color" id="sunColorInput" value="${sunColor}">
+
+                        <div class="slider-group">
+                            <label class="slider-label"><span>Intensidade (Ambiente)</span><span id="ambientIntensityValue">${ambientIntensity}</span></label>
+                            <input type="range" id="ambientIntensitySlider" min="0" max="2" value="${ambientIntensity}" step="0.05">
+                        </div>
+                        `;
+                    
+                    const skySelect = document.getElementById('skyboxSelect');
+                    if (customSkyboxResourceName) {
+                        addCustomSkyboxOption(skySelect);
+                    }
+                    skySelect.value = getSkyboxSelectState(); 
+                    
+                    skySelect.addEventListener('change', (e) => {
+                        const value = e.target.value;
+                        if (value === 'custom') {
+                            if (customSkyboxResourceName) {
+                                const dataURL = loadedResources.get(customSkyboxResourceName);
+                                if (dataURL) loadSkybox('custom', dataURL);
+                                else handleLoadCustomSkybox();
+                            } else {
+                                handleLoadCustomSkybox();
+                            }
+                        } else {
+                            loadSkybox(value);
+                        }
+                        // Recarregar o painel para atualizar os sliders
+                        openContextualPanel('world', btnElement);
+                    });
+                    
+                    // NOVO: Listener para o botão de modo noturno
+                    document.getElementById('applyNightModeBtn').addEventListener('click', () => {
+                        applyNightLightingPreset();
+                        // Recarregar o painel para mostrar os novos valores
+                        openContextualPanel('world', btnElement); 
+                    });
+                    
+                    // Listeners dos novos controles
+                    const sunIntensitySlider = document.getElementById('sunIntensitySlider');
+                    const sunIntensityValue = document.getElementById('sunIntensityValue');
+                    sunIntensitySlider.addEventListener('input', (e) => {
+                        const val = parseFloat(e.target.value);
+                        sunLight.intensity = val;
+                        sunIntensityValue.textContent = val.toFixed(1);
+                    });
+                    
+                    const sunAngleSlider = document.getElementById('sunAngleSlider');
+                    const sunAngleValueEl = document.getElementById('sunAngleValue');
+                    sunAngleSlider.addEventListener('input', (e) => {
+                        const val = parseFloat(e.target.value);
+                        updateSunPosition(val); // Atualiza a posição
+                        sunAngleValueEl.textContent = `${val.toFixed(0)}°`;
+                    });
+
+                    document.getElementById('sunColorInput').addEventListener('input', (e) => {
+                        sunLight.color.set(e.target.value);
+                    });
+                    
+                    const ambientIntensitySlider = document.getElementById('ambientIntensitySlider');
+                    const ambientIntensityValue = document.getElementById('ambientIntensityValue');
+                    ambientIntensitySlider.addEventListener('input', (e) => {
+                        const val = parseFloat(e.target.value);
+                        ambientLight.intensity = val;
+                        ambientIntensityValue.textContent = val.toFixed(2);
+                    });
+                    
+                    break;
+                    
+                case 'camera':
+                    const fov = camera.fov;
+                    // DOF
+                    const dofEnabled = bokehPass.enabled;
+                    const focus = bokehPass.uniforms['focus'].value;
+                    const aperture = bokehPass.uniforms['aperture'].value * 1e5;
+                    // Bloom
+                    const bloomEnabled = bloomPass.enabled;
+                    const bloomStrength = bloomPass.strength;
+                    const bloomThreshold = bloomPass.threshold;
+                    // Vignette
+                    const vignetteEnabled = vignettePass.enabled;
+                    const vignetteDarkness = vignettePass.uniforms['darkness'].value;
+                    
+                    // --- CORREÇÃO DE BUG ---
+                    
+                    // Color Correction
+                    const colorEnabled = colorCorrectionPass.enabled;
+                    const saturation = (colorCorrectionPass.uniforms['mulRGB']) 
+                        ? colorCorrectionPass.uniforms['mulRGB'].value.x - 1.0 
+                        : 0.0;
+                    const contrast = (colorCorrectionPass.uniforms['powRGB']) 
+                        ? colorCorrectionPass.uniforms['powRGB'].value.x - 2.0 
+                        : 0.0;
+                    // --- FIM DA CORREÇÃO ---
+
+                    panelContent.innerHTML = `
+                        <h3>Câmera (Filtros)</h3>
+                        <div class="slider-group">
+                            <label class="slider-label"><span>Campo de Visão (FOV)</span><span id="fovValue">${fov}</span></label>
+                            <input type="range" id="fovSlider" min="20" max="120" value="${fov}">
+                        </div>
+                        
+                        <!-- DOF -->
+                        <div class="checkbox-group" style="margin-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
+                            <input type="checkbox" id="dofToggle" ${dofEnabled ? 'checked' : ''}>
+                            <label for="dofToggle">Profundidade de Campo</label>
+                        </div>
+                        <div id="dofFocusControls" class="slider-group ${dofEnabled ? '' : 'hidden'}">
+                            <label class="slider-label"><span>Distância Foco</span><span id="dofFocusValue">${focus.toFixed(1)}</span></label>
+                            <input type="range" id="dofFocusSlider" min="1" max="100" value="${focus}" step="0.1">
+                        </div>
+                        <div id="dofApertureControls" class="slider-group ${dofEnabled ? '' : 'hidden'}">
+                            <label class="slider-label"><span>Abertura (Desfoque)</span><span id="dofApertureValue">${aperture.toFixed(1)}</span></label>
+                            <input type="range" id="dofApertureSlider" min="0" max="20" value="${aperture}" step="0.1">
+                        </div>
+                        
+                        <!-- BLOOM -->
+                        <div class="checkbox-group" style="margin-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
+                            <input type="checkbox" id="bloomToggle" ${bloomEnabled ? 'checked' : ''}>
+                            <label for="bloomToggle">Bloom (Brilho)</label>
+                        </div>
+                        <div id="bloomStrengthControls" class="slider-group ${bloomEnabled ? '' : 'hidden'}">
+                            <label class="slider-label"><span>Intensidade</span><span id="bloomStrengthValue">${bloomStrength.toFixed(2)}</span></label>
+                            <input type="range" id="bloomStrengthSlider" min="0" max="3" value="${bloomStrength}" step="0.01">
+                        </div>
+                        <div id="bloomThresholdControls" class="slider-group ${bloomEnabled ? '' : 'hidden'}">
+                            <label class="slider-label"><span>Limite (Threshold)</span><span id="bloomThresholdValue">${bloomThreshold.toFixed(2)}</span></label>
+                            <input type="range" id="bloomThresholdSlider" min="0" max="1" value="${bloomThreshold}" step="0.01">
+                        </div>
+                        
+                        <!-- VIGNETTE -->
+                        <div class="checkbox-group" style="margin-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
+                            <input type="checkbox" id="vignetteToggle" ${vignetteEnabled ? 'checked' : ''}>
+                            <label for="vignetteToggle">Vinheta</label>
+                        </div>
+                        <div id="vignetteControls" class="slider-group ${vignetteEnabled ? '' : 'hidden'}">
+                            <label class="slider-label"><span>Escuridão</span><span id="vignetteDarknessValue">${vignetteDarkness.toFixed(1)}</span></label>
+                            <input type="range" id="vignetteDarknessSlider" min="0" max="2" value="${vignetteDarkness}" step="0.1">
+                        </div>
+                        
+                        <!-- COLOR CORRECTION -->
+                        <div class="checkbox-group" style="margin-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
+                            <input type="checkbox" id="colorToggle" ${colorEnabled ? 'checked' : ''}>
+                            <label for="colorToggle">Correção de Cor</label>
+                        </div>
+                        <div id="colorSaturationControls" class="slider-group ${colorEnabled ? '' : 'hidden'}">
+                            <label class="slider-label"><span>Saturação</span><span id="saturationValue">${saturation.toFixed(1)}</span></label>
+                            <input type="range" id="saturationSlider" min="-1" max="1" value="${saturation}" step="0.1">
+                        </div>
+                        <div id="colorContrastControls" class="slider-group ${colorEnabled ? '' : 'hidden'}">
+                            <label class="slider-label"><span>Contraste</span><span id="contrastValue">${contrast.toFixed(1)}</span></label>
+                            <input type="range" id="contrastSlider" min="-1" max="1" value="${contrast}" step="0.1">
+                        </div>
+                        `;
+                    
+                    setupCameraControls();
+                    break;
+            }
+            
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            } else {
+                console.warn('Lucide not defined when opening panel.');
+            }
+        }
+        
+        // --- NOVA FUNÇÃO PARA CONTROLES DO CHÃO ---
+        function setupGroundControls() {
+            const grSlider = document.getElementById('groundRoughnessSlider');
+            const grValue = document.getElementById('groundRoughnessValue');
+            const gmSlider = document.getElementById('groundMetalnessSlider');
+            const gmValue = document.getElementById('groundMetalnessValue');
+            const gridToggle = document.getElementById('gridToggle');
+            
+            if (grSlider) {
+                grSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value) / 100;
+                    groundPlane.material.roughness = value;
+                    grValue.textContent = `${e.target.value}%`;
+                });
+            }
+            
+            if (gmSlider) {
+                gmSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value) / 100;
+                    groundPlane.material.metalness = value;
+                    gmValue.textContent = `${e.target.value}%`;
+                });
+            }
+            
+            if (gridToggle) {
+                gridToggle.addEventListener('change', (e) => {
+                    gridHelper.visible = e.target.checked;
+                });
+            }
+        }
+        
         
         // --- FUNÇÕES DE CONTROLES DE CÂMERA ---
         function createOrbitControls() {
@@ -577,21 +849,18 @@
             scene.add(pointerLockControls.getObject());
             
             pointerLockControls.addEventListener('lock', () => {
-                if (!uiPanel.classList.contains('hidden')) {
-                    toggleUiBtn.click(); 
+                if (!document.body.classList.contains('immersive-mode')) {
+                    toggleImmersiveMode();
                 }
             });
         }
         
-        // NOVO: Função refatorada para trocar de câmera
         function toggleCameraMode() {
             if (cameraMode === 'orbit') {
-                // --- MUDANDO PARA MODO EXPLORAR ---
+                // De ÓRBITA para EXPLORAR
                 cameraMode = 'explore';
-                cameraModeBtn.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0-18 0Z"></path><path d="M21 12c0-4.97-4.03-9-9-9"></path><path d="m2 16 3-3"></path><path d="m13 8 3-3 3 3"></path><path d="M16 2v3"></path><path d="M8 22v-3"></path></svg>
-                    Modo: Explorar`;
-                cameraHelpText.classList.remove('hidden');
+                cameraModeIcon.setAttribute('data-lucide', 'move-3d');
+                cameraModeBtn.setAttribute('data-tooltip', 'Modo Explorar (C)');
                 
                 if (orbitControls) {
                     orbitControls.dispose();
@@ -599,19 +868,28 @@
                 }
                 
                 createPointerLockControls();
-                
                 camera.position.set(0, 1.8, 10);
                 pointerLockControls.getObject().position.copy(camera.position);
-                
                 transformControls.enabled = false; 
+                
+                camera.fov = 60; // FOV Padrão
+                camera.updateProjectionMatrix();
 
-            } else {
-                // --- MUDANDO PARA MODO ORBITAR ---
+            } else if (cameraMode === 'explore') {
+                // De EXPLORAR para CINEMÁTICO
+                cameraMode = 'cinematic';
+                cameraModeIcon.setAttribute('data-lucide', 'video');
+                cameraModeBtn.setAttribute('data-tooltip', 'Modo Cinemático (C)');
+                
+                // Não precisa recriar o PointerLockControls, só ajustar o FOV
+                camera.fov = 45; // FOV Cinematográfico
+                camera.updateProjectionMatrix();
+
+            } else { // cameraMode === 'cinematic'
+                // De CINEMÁTICO para ÓRBITA
                 cameraMode = 'orbit';
-                cameraModeBtn.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 19l-2-2-2 2"></path><path d="M7 21v-4"></path><path d="M7 13A6 6 0 0 0 7 1a6 6 0 0 0 0 12z"></path><path d="M15 13a6 6 0 0 0 0-12 6 6 0 0 0-1 3.5"></path></svg>
-                    Modo: Orbitar`;
-                cameraHelpText.classList.add('hidden');
+                cameraModeIcon.setAttribute('data-lucide', 'orbit');
+                cameraModeBtn.setAttribute('data-tooltip', 'Modo Orbitar (C)');
                 
                 if (pointerLockControls) {
                     scene.remove(pointerLockControls.getObject());
@@ -620,11 +898,26 @@
                 }
                 
                 createOrbitControls();
-                
                 camera.position.set(15, 20, 25);
                 orbitControls.target.set(0, 0, 0); 
-
                 transformControls.enabled = true; 
+                
+                camera.fov = 60; // FOV Padrão
+                camera.updateProjectionMatrix();
+            }
+            
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons(); // Atualiza o ícone
+            } else {
+                 console.warn('Lucide not defined when toggling camera.');
+            }
+        }
+        
+        function toggleImmersiveMode() {
+            document.body.classList.toggle('immersive-mode');
+            if (document.body.classList.contains('immersive-mode')) {
+                setSelectedObject(null);
+                closeContextualPanel();
             }
         }
         
@@ -634,25 +927,31 @@
 
             if (cameraMode === 'orbit' && orbitControls) {
                 orbitControls.update();
-            } else if (cameraMode === 'explore' && pointerLockControls) {
+            } else if ((cameraMode === 'explore' || cameraMode === 'cinematic') && pointerLockControls) {
                 
-                velocity.x -= velocity.x * 10.0 * delta;
-                velocity.z -= velocity.z * 10.0 * delta;
-                velocity.y -= velocity.y * 10.0 * delta; 
+                // Damping (amortecimento) menor para modo cinematic
+                const damping = (cameraMode === 'cinematic') ? 2.0 : 10.0;
+                
+                velocity.x -= velocity.x * damping * delta;
+                velocity.z -= velocity.z * damping * delta;
+                velocity.y -= velocity.y * damping * delta; 
 
                 direction.z = Number(moveForward) - Number(moveBackward);
                 direction.x = Number(moveRight) - Number(moveLeft);
-                direction.y = Number(moveUp) - Number(moveDown);
+                direction.y = Number(moveUp) - Number(moveDown); // Espaço = 1, Shift = -1
                 direction.normalize(); 
 
-                const speed = 40.0;
+                // Velocidade menor para modo cinematic
+                const speed = (cameraMode === 'cinematic') ? 25.0 : 40.0;
+                
                 if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
                 if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
-                if (moveUp || moveDown) velocity.y -= direction.y * speed * delta;
+                
+                if (moveUp || moveDown) velocity.y += direction.y * speed * delta; 
 
                 pointerLockControls.moveRight(-velocity.x * delta);
                 pointerLockControls.moveForward(-velocity.z * delta);
-                pointerLockControls.getObject().position.y += (velocity.y * delta);
+                pointerLockControls.getObject().position.y += (velocity.y * delta); // Sobe/Desce
 
                 if (pointerLockControls.getObject().position.y < 0.5) {
                     pointerLockControls.getObject().position.y = 0.5;
@@ -670,6 +969,7 @@
                     object.lookAt(cameraPosition);
                 }
             }
+            
             composer.render();
         }
 
@@ -678,6 +978,37 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
             composer.setSize(window.innerWidth, window.innerHeight);
+            
+            // NOVO: Atualiza a resolução do OutlinePass
+            if (outlinePass) {
+                outlinePass.resolution.set(window.innerWidth, window.innerHeight);
+            }
+        }
+        
+        // NOVO: Função helper para atualizar a posição do sol
+        function updateSunPosition(angle) {
+            if (angle !== undefined) {
+                sunAngle = parseFloat(angle);
+            }
+            
+            const rad = THREE.MathUtils.degToRad(sunAngle);
+            const distance = 30; // Distância horizontal da origem
+            const height = 30;   // Altura do sol
+            
+            const x = distance * Math.sin(rad);
+            const z = distance * Math.cos(rad);
+            
+            sunLight.position.set(x, height, z);
+        }
+        
+        // NOVO: Função helper para aplicar preset de noite
+        function applyNightLightingPreset() {
+            if (ambientLight) ambientLight.intensity = 0.05;
+            if (sunLight) {
+                sunLight.intensity = 0.5;
+                sunLight.color.set(0xaaaaff); // Azulado (lua)
+            }
+            updateSunPosition(90); // Lua a pino
         }
 
         // --- Função para Carregar Skybox e Iluminação ---
@@ -691,11 +1022,13 @@
                     scene.background = texture;
                     scene.environment = texture;
                     
+                    // Aplica iluminação padrão para customizado (pode ser ajustado)
                     if (ambientLight) ambientLight.intensity = 0.2;
                     if (sunLight) {
                         sunLight.intensity = 3.0;
                         sunLight.color.set(0xffffff);
                     }
+                    updateSunPosition(45); // Posição padrão para customizado
                 });
                 return;
             }
@@ -758,6 +1091,7 @@
                         sunLight.intensity = 3.0;
                         sunLight.color.set(0xffffff);
                     }
+                    updateSunPosition(45);
                     break;
                 case 'sunset':
                     if (ambientLight) ambientLight.intensity = 0.1;
@@ -765,13 +1099,11 @@
                         sunLight.intensity = 2.5;
                         sunLight.color.set(0xffaa88);
                     }
+                    updateSunPosition(135); // Sol de lado
                     break;
                 case 'night':
-                    if (ambientLight) ambientLight.intensity = 0.05;
-                    if (sunLight) {
-                        sunLight.intensity = 0.5;
-                        sunLight.color.set(0xaaaaff);
-                    }
+                    // USA O NOVO PRESET HELPER
+                    applyNightLightingPreset(); 
                     break;
                 case 'default':
                 default:
@@ -780,6 +1112,7 @@
                         sunLight.intensity = 2.0;
                         sunLight.color.set(0xffffff);
                     }
+                    updateSunPosition(45); // Posição padrão
                     break;
             }
         }
@@ -790,7 +1123,16 @@
             composer = new EffectComposer(renderer);
             renderPass = new RenderPass(scene, camera);
             composer.addPass(renderPass);
+            
+            // Bloom
+            bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.5, 0.4, 0.85);
+            bloomPass.threshold = 0.85; 
+            bloomPass.strength = 0.5; 
+            bloomPass.radius = 0.4; 
+            bloomPass.enabled = false;
+            composer.addPass(bloomPass);
 
+            // DOF
             bokehPass = new BokehPass(scene, camera, {
                 focus: 20.0,
                 aperture: 5.0,
@@ -800,36 +1142,134 @@
             });
             bokehPass.enabled = false;
             composer.addPass(bokehPass);
+            
+            // Color Correction
+            colorCorrectionPass = new ShaderPass(ColorCorrectionShader);
+            colorCorrectionPass.uniforms['powRGB'].value = new THREE.Vector3(2.0, 2.0, 2.0); // Contrast (Base 2.0)
+            colorCorrectionPass.uniforms['mulRGB'].value = new THREE.Vector3(1.0, 1.0, 1.0); // Saturation (Base 1.0)
+            colorCorrectionPass.enabled = false;
+            composer.addPass(colorCorrectionPass);
+            
+            // Vignette
+            vignettePass = new ShaderPass(VignetteShader);
+            vignettePass.uniforms['offset'].value = 1.0;
+            vignettePass.uniforms['darkness'].value = 1.1;
+            vignettePass.enabled = false;
+            composer.addPass(vignettePass);
 
+            // NOVO: OutlinePass (para o "rim light")
+            outlinePass = new OutlinePass( new THREE.Vector2( window.innerWidth, window.innerHeight ), scene, camera );
+            outlinePass.edgeStrength = 4.0; // Força do contorno
+            outlinePass.edgeGlow = 0.5; // Um leve brilho
+            outlinePass.edgeThickness = 1.0; // Espessura
+            outlinePass.visibleEdgeColor.set('#a7f3d0'); // Cor da UI (verde menta)
+            outlinePass.hiddenEdgeColor.set('#a7f3d0'); // Mesmo se estiver atrás de algo
+            composer.addPass(outlinePass);
+
+            // NOVO: SMAAPass (Anti-Aliasing)
+            // Deve ser um dos últimos passes, antes do OutputPass
+            smaaPass = new SMAAPass( window.innerWidth * renderer.getPixelRatio(), window.innerHeight * renderer.getPixelRatio() );
+            composer.addPass(smaaPass);
+
+            // OutputPass (SEMPRE O ÚLTIMO)
             const outputPass = new OutputPass();
             composer.addPass(outputPass);
         }
 
         function setupCameraControls() {
+            // FOV
+            const fovSlider = document.getElementById('fovSlider');
+            const fovValue = document.getElementById('fovValue');
             fovSlider.addEventListener('input', (e) => {
                 camera.fov = parseFloat(e.target.value);
                 camera.updateProjectionMatrix();
                 fovValue.textContent = e.target.value;
             });
             
-            dofToggle.checked = false;
-            dofFocusControls.classList.toggle('hidden', true); 
-            dofApertureControls.classList.toggle('hidden', true); 
+            // DOF
+            const dofToggle = document.getElementById('dofToggle');
+            const dofFocusSlider = document.getElementById('dofFocusSlider');
+            const dofFocusValue = document.getElementById('dofFocusValue');
+            const dofApertureSlider = document.getElementById('dofApertureSlider');
+            const dofApertureValue = document.getElementById('dofApertureValue');
+            const dofFocusControls = document.getElementById('dofFocusControls');
+            const dofApertureControls = document.getElementById('dofApertureControls');
             
             dofToggle.addEventListener('change', (e) => {
                 bokehPass.enabled = e.target.checked;
                 dofFocusControls.classList.toggle('hidden', !e.target.checked);
                 dofApertureControls.classList.toggle('hidden', !e.target.checked);
             });
-            
             dofFocusSlider.addEventListener('input', (e) => {
                 bokehPass.uniforms['focus'].value = parseFloat(e.target.value);
                 dofFocusValue.textContent = parseFloat(e.target.value).toFixed(1);
             });
-            
             dofApertureSlider.addEventListener('input', (e) => {
                 bokehPass.uniforms['aperture'].value = parseFloat(e.target.value) * 1e-5;
                 dofApertureValue.textContent = parseFloat(e.target.value).toFixed(1);
+            });
+
+            // Bloom
+            const bloomToggle = document.getElementById('bloomToggle');
+            const bloomStrengthSlider = document.getElementById('bloomStrengthSlider');
+            const bloomStrengthValue = document.getElementById('bloomStrengthValue');
+            const bloomThresholdSlider = document.getElementById('bloomThresholdSlider');
+            const bloomThresholdValue = document.getElementById('bloomThresholdValue');
+            const bloomStrengthControls = document.getElementById('bloomStrengthControls');
+            const bloomThresholdControls = document.getElementById('bloomThresholdControls');
+            
+            bloomToggle.addEventListener('change', (e) => {
+                bloomPass.enabled = e.target.checked;
+                bloomStrengthControls.classList.toggle('hidden', !e.target.checked);
+                bloomThresholdControls.classList.toggle('hidden', !e.target.checked);
+            });
+            bloomStrengthSlider.addEventListener('input', (e) => {
+                bloomPass.strength = parseFloat(e.target.value);
+                bloomStrengthValue.textContent = parseFloat(e.target.value).toFixed(2);
+            });
+             bloomThresholdSlider.addEventListener('input', (e) => {
+                bloomPass.threshold = parseFloat(e.target.value);
+                bloomThresholdValue.textContent = parseFloat(e.target.value).toFixed(2);
+            });
+            
+            // Vignette
+            const vignetteToggle = document.getElementById('vignetteToggle');
+            const vignetteDarknessSlider = document.getElementById('vignetteDarknessSlider');
+            const vignetteDarknessValue = document.getElementById('vignetteDarknessValue');
+            const vignetteControls = document.getElementById('vignetteControls');
+            
+            vignetteToggle.addEventListener('change', (e) => {
+                vignettePass.enabled = e.target.checked;
+                vignetteControls.classList.toggle('hidden', !e.target.checked);
+            });
+            vignetteDarknessSlider.addEventListener('input', (e) => {
+                vignettePass.uniforms['darkness'].value = parseFloat(e.target.value);
+                vignetteDarknessValue.textContent = parseFloat(e.target.value).toFixed(1);
+            });
+            
+            // Color Correction
+            const colorToggle = document.getElementById('colorToggle');
+            const saturationSlider = document.getElementById('saturationSlider');
+            const saturationValue = document.getElementById('saturationValue');
+            const contrastSlider = document.getElementById('contrastSlider');
+            const contrastValue = document.getElementById('contrastValue');
+            const colorSaturationControls = document.getElementById('colorSaturationControls');
+            const colorContrastControls = document.getElementById('colorContrastControls');
+
+            colorToggle.addEventListener('change', (e) => {
+                colorCorrectionPass.enabled = e.target.checked;
+                colorSaturationControls.classList.toggle('hidden', !e.target.checked);
+                colorContrastControls.classList.toggle('hidden', !e.target.checked);
+            });
+            saturationSlider.addEventListener('input', (e) => {
+                const sat = 1.0 + parseFloat(e.target.value); // Base é 1.0
+                colorCorrectionPass.uniforms['mulRGB'].value.set(sat, sat, sat);
+                saturationValue.textContent = parseFloat(e.target.value).toFixed(1);
+            });
+            contrastSlider.addEventListener('input', (e) => {
+                const con = 2.0 + parseFloat(e.target.value); // Base é 2.0
+                colorCorrectionPass.uniforms['powRGB'].value.set(con, con, con);
+                contrastValue.textContent = parseFloat(e.target.value).toFixed(1);
             });
         }
         
@@ -840,12 +1280,22 @@
                 tokens: [],
                 resources: Array.from(loadedResources.entries()),
                 skybox: {
-                    name: skyboxSelect.value,
-                    resourceName: (skyboxSelect.value === 'custom') ? customSkyboxResourceName : null
+                    name: getSkyboxSelectState(),
+                    resourceName: (getSkyboxSelectState() === 'custom') ? customSkyboxResourceName : null
                 },
                 groundMaterial: {
                     roughness: groundPlane.material.roughness,
                     metalness: groundPlane.material.metalness
+                },
+                // NOVO: Salva o estado do grid
+                grid: {
+                    visible: gridHelper.visible
+                },
+                lighting: {
+                    sunIntensity: sunLight.intensity,
+                    sunColor: sunLight.color.getHexString(),
+                    ambientIntensity: ambientLight.intensity,
+                    sunAngle: sunAngle
                 }
             };
             
@@ -860,7 +1310,7 @@
                 if (obj.userData.type === 'point_light') {
                     data.color = obj.userData.light.color.getHex();
                     data.intensity = obj.userData.light.intensity;
-                    data.name = obj.userData.name; // Salva o nome da luz
+                    data.name = obj.userData.name; 
                 } else if (obj.userData.type === 'image_sprite' || obj.userData.type === 'model_glb') {
                     data.resourceName = obj.userData.resourceName;
                 }
@@ -903,11 +1353,19 @@
                         }
                     }
                     
-                    // Atualiza o seletor de luz DEPOIS que todas as luzes foram carregadas
                     updateLightSelector();
                     
+                    // NOVO: Carrega o estado da iluminação
+                    if (sceneData.lighting) {
+                        sunLight.intensity = sceneData.lighting.sunIntensity;
+                        sunLight.color.set('#' + sceneData.lighting.sunColor);
+                        ambientLight.intensity = sceneData.lighting.ambientIntensity;
+                        updateSunPosition(sceneData.lighting.sunAngle); // Isso define o sunAngle global
+                    }
+                    
                     if (sceneData.skybox) {
-                        if (sceneData.skybox.name === 'custom' && sceneData.skybox.resourceName) {
+                        const skyboxName = sceneData.skybox.name || 'default';
+                        if (skyboxName === 'custom' && sceneData.skybox.resourceName) {
                             customSkyboxResourceName = sceneData.skybox.resourceName;
                             let dataURL = loadedResources.get(customSkyboxResourceName);
                             if (!dataURL) {
@@ -915,53 +1373,41 @@
                                     dataURL = await requestResourceFile(
                                          `Por favor, selecione o arquivo do Céu Customizado: ${customSkyboxResourceName}`,
                                          'image/*',
-                                         500 * 1024 * 1024 // 500MB
+                                         500 * 1024 * 1024 
                                     );
                                     loadedResources.set(customSkyboxResourceName, dataURL);
                                 } catch (err) {
                                     alert(err.message);
-                                    loadSkybox('default');
-                                    skyboxSelect.value = 'default';
-                                    return; 
+                                    loadSkybox('default'); // Carrega o padrão se o usuário cancelar
                                 }
                             }
-                            addCustomSkyboxOption();
-                            skyboxSelect.value = 'custom';
-                            loadSkybox('custom', dataURL);
-                            
+                            if (dataURL) loadSkybox('custom', dataURL); // Só carrega se tiver o dataURL
                         } else {
-                            skyboxSelect.value = sceneData.skybox.name || 'default';
-                            loadSkybox(skyboxSelect.value);
+                            loadSkybox(skyboxName);
                         }
                     } else {
-                        skyboxSelect.value = 'default';
                         loadSkybox('default');
                     }
                     
                     if (sceneData.groundMaterial) {
-                        const { roughness, metalness } = sceneData.groundMaterial;
-                        groundPlane.material.roughness = roughness;
-                        groundPlane.material.metalness = metalness;
-                        
-                        groundRoughnessSlider.value = roughness;
-                        groundRoughnessValue.textContent = roughness.toFixed(2);
-                        groundMetalnessSlider.value = metalness;
-                        groundMetalnessValue.textContent = metalness.toFixed(2);
+                        groundPlane.material.roughness = sceneData.groundMaterial.roughness;
+                        groundPlane.material.metalness = sceneData.groundMaterial.metalness;
                     } else {
                         groundPlane.material.roughness = 0.8;
                         groundPlane.material.metalness = 0.2;
-                        groundRoughnessSlider.value = 0.8;
-                        groundRoughnessValue.textContent = (0.8).toFixed(2);
-                        groundMetalnessSlider.value = 0.2;
-                        groundMetalnessValue.textContent = (0.2).toFixed(2);
                     }
+                    
+                    // NOVO: Carrega o estado do grid
+                    gridHelper.visible = sceneData.grid?.visible ?? true;
+                    
+                    closeContextualPanel();
                     
                 } catch (err) {
                     console.error("Erro ao carregar a cena:", err);
                     alert("Erro: Não foi possível ler o arquivo de cena.");
                 }
             };
-            reader.readText(file);
+            reader.readAsText(file);
         }
         
         function clearScene() {
@@ -983,7 +1429,10 @@
                 scene.remove(obj);
             }
             
-            updateLightSelector(); // Limpa o seletor
+            // Reseta o estado
+            gridHelper.visible = true;
+            
+            updateLightSelector(); 
         }
 
         // --- Funções de Tokens e Objetos ---
@@ -1005,7 +1454,7 @@
                          resourceDataURL = await requestResourceFile(
                              `Por favor, selecione o arquivo para: ${data.resourceName}`,
                              accept,
-                             500 * 1024 * 1024 // 500MB
+                             500 * 1024 * 1024 
                          );
                          loadedResources.set(data.resourceName, dataURL);
                      } catch(err) {
@@ -1048,7 +1497,6 @@
             mesh.userData.isGizmoDragging = false;
             
             if (type === 'point_light') {
-                // Seta um nome se não tiver um (do save/load)
                 if (!data.name) {
                     const lightCount = draggableObjects.filter(o => o.userData.type === 'point_light').length + 1;
                     mesh.userData.name = `Luz ${lightCount}`;
@@ -1071,7 +1519,7 @@
             draggableObjects.push(mesh);
             
             if (type === 'point_light') {
-                updateLightSelector(); // Atualiza o dropdown
+                updateLightSelector(); 
             }
             
             return mesh;
@@ -1084,7 +1532,6 @@
                 return getBase ? 0 : object.position.y + object.scale.y / 2;
             } 
             
-            // Para luzes (que são invisíveis), retorna a posição
             if (object.userData.type === 'point_light') {
                 return getBase ? object.position.y : object.position.y;
             }
@@ -1119,7 +1566,7 @@
                 return object.scale.y / 2;
             }
 
-            return 0; // Padrão (incluindo luzes)
+            return 0; 
         }
 
 
@@ -1176,15 +1623,12 @@
                     pointLight.shadow.bias = -0.001;
                     pointLight.shadow.normalBias = 0.05;
                     
-                    // *** CORREÇÃO 1: O material fica invisível, mas o "mesh" (dono da luz) não. ***
                     const gizmoMaterial = new THREE.MeshBasicMaterial({ color: lightColor });
                     gizmoMaterial.transparent = true;
                     gizmoMaterial.opacity = 0;
                     
-                    const gizmoGeometry = new THREE.SphereGeometry(0.1, 8, 4); // Pode ser minúsculo
+                    const gizmoGeometry = new THREE.SphereGeometry(0.1, 8, 4); 
                     mesh = new THREE.Mesh(gizmoGeometry, gizmoMaterial); 
-                    
-                    // mesh.visible = false; // <-- ESTA ERA A LINHA DO BUG, REMOVIDA.
                     
                     mesh.add(pointLight);
                     mesh.userData.light = pointLight;
@@ -1233,7 +1677,7 @@
             }
             
             if (wasLight) {
-                updateLightSelector(); // Atualiza o dropdown
+                updateLightSelector(); 
             }
         }
 
@@ -1242,9 +1686,9 @@
             mouse.x = (clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
-
-            // Intersecta apenas objetos visíveis (luzes são mesh.visible = false, então são ignoradas)
-            const intersects = raycaster.intersectObjects([...draggableObjects, groundPlane], true); 
+            
+            const visibleObjects = draggableObjects.filter(o => o.userData.type !== 'point_light');
+            const intersects = raycaster.intersectObjects([...visibleObjects, groundPlane], true); 
             
             const objectIntersect = intersects.find(intersect => intersect.object.name !== "ground");
             
@@ -1256,21 +1700,11 @@
         function getSpawnPosition() {
             raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
             const pos = raycaster.ray.at(15, new THREE.Vector3());
-            pos.y = 0; // Será corrigido em addNewToken
+            pos.y = 0; 
             return pos;
         }
         
         // --- Funções de Leitura de Arquivo ---
-
-        function setupFileInputs() {
-            [loadImageInput, loadModelInput, loadSceneInput, loadSkyboxInput].forEach(input => {
-                input.style.display = 'none';
-            });
-            
-            loadImageInput.addEventListener('change', (e) => handleFileToken(e, 'image_sprite'));
-            loadModelInput.addEventListener('change', (e) => handleFileToken(e, 'model_glb'));
-            loadSkyboxInput.addEventListener('change', handleLoadCustomSkybox); 
-        }
         
         async function handleFileToken(event, type) {
             const file = event.target.files[0];
@@ -1298,26 +1732,32 @@
         
         async function handleLoadCustomSkybox(event) {
             let file;
-            if(event) {
+            if(event && event.target.files) {
                 file = event.target.files[0];
             } else {
                 try {
                      const dataURL = await requestResourceFile(
                         "Por favor, selecione seu arquivo de céu customizado (360).",
                         'image/*',
-                        500 * 1024 * 1024 // 500MB
+                        500 * 1024 * 1024 
                     );
                     const resourceName = `skybox_custom_${Date.now()}`;
                     loadedResources.set(resourceName, dataURL);
                     customSkyboxResourceName = resourceName;
-                    addCustomSkyboxOption();
-                    skyboxSelect.value = 'custom';
+                    
+                    const skySelect = document.getElementById('skyboxSelect');
+                    if (skySelect) { 
+                        addCustomSkyboxOption(skySelect);
+                        skySelect.value = 'custom';
+                    }
+                    
                     loadSkybox('custom', dataURL);
                     return;
 
                 } catch (err) {
                     alert(err.message);
-                    skyboxSelect.value = 'default'; 
+                    const skySelect = document.getElementById('skyboxSelect');
+                    if (skySelect) skySelect.value = 'default'; 
                     return;
                 }
             }
@@ -1342,8 +1782,12 @@
                 loadedResources.set(resourceName, dataURL);
                 customSkyboxResourceName = resourceName;
                 
-                addCustomSkyboxOption(); 
-                skyboxSelect.value = 'custom'; 
+                const skySelect = document.getElementById('skyboxSelect');
+                if (skySelect) {
+                    addCustomSkyboxOption(skySelect);
+                    skySelect.value = 'custom';
+                }
+                
                 loadSkybox('custom', dataURL); 
             } catch (err) {
                 alert("Erro ao ler o ficheiro: " + err.message);
@@ -1352,22 +1796,32 @@
             if (event) event.target.value = null;
         }
 
-        function addCustomSkyboxOption() {
-            let option = skyboxSelect.querySelector('option[value="custom"]');
+        function addCustomSkyboxOption(selectElement) {
+            if (!selectElement) return;
+            let option = selectElement.querySelector('option[value="custom"]');
             if (!option) {
                 option = document.createElement('option');
                 option.value = 'custom';
                 option.textContent = 'Customizado';
-                skyboxSelect.appendChild(option);
+                selectElement.appendChild(option);
             }
         }
         
         function removeCustomSkyboxOption() {
-            let option = skyboxSelect.querySelector('option[value="custom"]');
-            if (option) {
-                option.remove();
+             const skySelect = document.getElementById('skyboxSelect'); 
+            if (skySelect) {
+                let option = skySelect.querySelector('option[value="custom"]');
+                if (option) {
+                    option.remove();
+                }
             }
             customSkyboxResourceName = null;
+        }
+        
+        function getSkyboxSelectState() {
+            const skySelect = document.getElementById('skyboxSelect');
+            if(skySelect) return skySelect.value;
+            return customSkyboxResourceName ? 'custom' : 'default'; 
         }
 
         function fileToDataURL(file) {
@@ -1422,7 +1876,8 @@
         function onMouseDown(event) {
             if (event.button !== 0) return;
             if (transformControls.dragging) return;
-            if (cameraMode === 'explore' && pointerLockControls && pointerLockControls.isLocked) return;
+            if ((cameraMode === 'explore' || cameraMode === 'cinematic') && pointerLockControls && pointerLockControls.isLocked) return;
+            if (iconToolbar.contains(event.target) || panelContainer.contains(event.target)) return;
             
             isDragging = false;
             
@@ -1434,7 +1889,6 @@
                 while (intersectedObject.parent && !draggableObjects.includes(intersectedObject)) {
                     intersectedObject = intersectedObject.parent;
                 }
-                // Como as luzes são invisíveis (material), getIntersectedObject NUNCA as encontrará.
                 if (!draggableObjects.includes(intersectedObject)) {
                      intersectedObject = null;
                 }
@@ -1454,7 +1908,7 @@
         
         function onMouseUp(event) {
             if (event.button !== 0) return;
-            if (cameraMode === 'explore' && pointerLockControls && pointerLockControls.isLocked) return;
+            if ((cameraMode === 'explore' || cameraMode === 'cinematic') && pointerLockControls && pointerLockControls.isLocked) return;
             
             clearTimeout(clickTimer);
             
@@ -1465,11 +1919,16 @@
                 if (!document.body.classList.contains('immersive-mode')) {
                     if (transformControls.dragging) return;
                     
-                    if (dragObject) { // dragObject é o objeto clicável (não-luz)
+                    if (dragObject) { 
                         setSelectedObject(dragObject);
                     } else {
-                        // Clicou no chão, deseleciona tudo
+                        // Clicou no chão
                         setSelectedObject(null);
+                        closeContextualPanel();
+                        
+                        if ((cameraMode === 'explore' || cameraMode === 'cinematic') && pointerLockControls && !pointerLockControls.isLocked) {
+                            pointerLockControls.lock();
+                        }
                     }
                 }
             }
@@ -1480,7 +1939,7 @@
         }
         
         function onMouseMove(event) {
-            if (isDragging && dragObject) { // dragObject NUNCA será uma luz
+            if (isDragging && dragObject) { 
                 mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
                 mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
                 raycaster.setFromCamera(mouse, camera);
@@ -1522,36 +1981,44 @@
             }
         }
 
-        // --- NOVO: Função de seleção atualizada ---
+        // --- Função de seleção atualizada ---
         function setSelectedObject(object) {
             if (selectedObject === object) return;
             
             selectedObject = object;
+            
+            // NOVO: Atualiza o OutlinePass
+            if (selectedObject) {
+                outlinePass.selectedObjects = [selectedObject];
+            } else {
+                outlinePass.selectedObjects = [];
+            }
+            
+            if(selectedObject && selectedObject.userData.type === 'point_light') {
+                lightSelectState = selectedObject.uuid;
+            } else if (!selectedObject) {
+                lightSelectState = 'none';
+            }
+            
+            const lightSelect = document.getElementById('lightSelect');
+            if (lightSelect) {
+                lightSelect.value = lightSelectState;
+            }
 
             if (selectedObject) {
                 transformControls.attach(selectedObject);
                 transformControls.setMode('translate');
-                
-                // Atualiza o dropdown
-                if (selectedObject.userData.type === 'point_light') {
-                    // Garante que o dropdown mostre o item certo
-                    if (lightSelect.value !== selectedObject.uuid) {
-                        lightSelect.value = selectedObject.uuid;
-                    }
-                } else {
-                    // Se selecionamos um cubo, reseta o dropdown
-                    lightSelect.value = 'none';
-                }
-
             } else {
                 transformControls.detach();
-                lightSelect.value = 'none'; // Deseleciona no dropdown
             }
         }
         
-        // --- NOVO: Função para atualizar o seletor de luz ---
+        // --- Função para atualizar o seletor de luz ---
         function updateLightSelector() {
-            const selectedId = selectedObject ? selectedObject.uuid : null;
+            const lightSelect = document.getElementById('lightSelect');
+            if (!lightSelect) return; 
+            
+            const selectedId = lightSelectState;
             
             while (lightSelect.options.length > 1) {
                 lightSelect.remove(1);
@@ -1570,10 +2037,11 @@
                 }
             });
 
-            if (selectedId && draggableObjects.some(o => o.uuid === selectedId && o.userData.type === 'point_light')) {
+            if (draggableObjects.some(o => o.uuid === selectedId && o.userData.type === 'point_light')) {
                 lightSelect.value = selectedId;
             } else {
                 lightSelect.value = 'none';
+                lightSelectState = 'none';
             }
         }
         
@@ -1604,38 +2072,25 @@
 
         function onKeyDown(event) {
             const targetNode = event.target.tagName.toLowerCase();
-            if (targetNode === 'input' || targetNode === 'textarea' || targetNode === 'select') return; // Adicionado 'select'
-
-            // --- ATALHOS GLOBAIS ---
+            if (targetNode === 'input' || targetNode === 'textarea' || targetNode === 'select') return;
             
-            // Atalho 'H' para Modo Imersivo (Ocultar UI)
             if (event.key === 'h' || event.key === 'H') {
-                document.body.classList.toggle('immersive-mode');
-                
-                // Se entramos no modo imersivo, deseleciona qualquer objeto para esconder o gizmo
-                if (document.body.classList.contains('immersive-mode')) {
-                    setSelectedObject(null);
-                }
-                
+                toggleImmersiveMode();
                 event.preventDefault();
-                return; // Sai da função
+                return;
             }
             
-            // Atalho 'C' para Mudar Modo de Câmera
             if (event.key === 'c' || event.key === 'C') {
-                if (cameraMode === 'explore' && pointerLockControls && pointerLockControls.isLocked) {
-                    // Não faz nada se estiver travado no modo FPS
+                if ((cameraMode === 'explore' || cameraMode === 'cinematic') && pointerLockControls && pointerLockControls.isLocked) {
+                    // Não faz nada
                 } else {
                     toggleCameraMode();
                 }
                 event.preventDefault();
-                return; // Sai da função
+                return;
             }
 
-            // --- FIM DOS ATALHOS GLOBAIS ---
-
-
-            if (cameraMode === 'explore' && pointerLockControls && pointerLockControls.isLocked) {
+            if ((cameraMode === 'explore' || cameraMode === 'cinematic') && pointerLockControls && pointerLockControls.isLocked) {
                 switch (event.key) {
                     case 'w': case 'W':
                         moveForward = true;
@@ -1677,7 +2132,6 @@
                     }
                     event.preventDefault();
                 }
-                // Permite rotação para luzes (para mudar a sombra)
                 if (selectedObject && selectedObject.userData.type === 'point_light') {
                      switch (transformControls.mode) {
                         case 'translate':
@@ -1735,6 +2189,7 @@
                     break;
                 case 'Escape':
                     setSelectedObject(null);
+                    closeContextualPanel();
                     break;
             }
 
